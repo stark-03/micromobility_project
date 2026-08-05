@@ -95,9 +95,13 @@ consequences:
 
 - **Sequelize must use the `mysql2` driver.** The legacy `mysql` package cannot complete the
   handshake. `ER_NOT_SUPPORTED_AUTH_MODE` means something reintroduced it.
-- **`allowPublicKeyRetrieval` is set for local development.** Over a plain localhost connection,
-  `mysql2` needs the server's RSA public key for the first password exchange. It is set in
-  `apps/api/src/db/index.ts`. **Never set it against a remote server** — use TLS there.
+- **You do *not* need `allowPublicKeyRetrieval`.** `CLAUDE.md` and `design.md` both ask for it,
+  but that is a JDBC option name — Node's `mysql2` has no such setting and warns that a future
+  version will throw on it. mysql2 implements `caching_sha2_password` natively and fetches the
+  server's public key itself. Removed, with the reasoning in
+  [`docs/adr/0002-mysql2-auth.md`](docs/adr/0002-mysql2-auth.md).
+- **When this stops talking to localhost, use TLS.** `dialectOptions: { ssl: … }`. The original
+  warning against exposing a password exchange to a remote network still stands.
 
 Do not "fix" an auth error by recreating the user with `mysql_native_password`. The plugin is not
 in MySQL 8.4.

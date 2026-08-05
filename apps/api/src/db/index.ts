@@ -8,11 +8,17 @@ export function buildSequelize(dbName: string): Sequelize {
     dialect: 'mysql',
     logging: false,
     dialectOptions: {
-      // MySQL 8.4 removed mysql_native_password. mysql2 speaks
-      // caching_sha2_password, but over a plain localhost connection it needs
-      // the server's public key for the initial exchange.
-      // LOCALHOST ONLY — never set this against a remote server; use TLS there.
-      allowPublicKeyRetrieval: true,
+      // NOTE: CLAUDE.md and design.md both ask for `allowPublicKeyRetrieval: true`
+      // here. That is a JDBC option name — the Node mysql2 driver has no such
+      // setting and logs "Ignoring invalid configuration option" when given it,
+      // which a future mysql2 promises to upgrade to a thrown error.
+      //
+      // It isn't needed: mysql2 implements caching_sha2_password natively and
+      // requests the server's RSA public key itself when the auth cache is cold
+      // over a non-TLS connection. MySQL 8.4 removed mysql_native_password, so
+      // the driver choice still matters — the legacy `mysql` package cannot
+      // complete this handshake at all. See docs/adr/0002-mysql2-auth.md.
+      //
       // BIGINT UNSIGNED exceeds Number.MAX_SAFE_INTEGER, so ids come back as
       // strings. Every DTO types `id` as string because of this.
       supportBigNumbers: true,
