@@ -1,0 +1,36 @@
+# dependencies
+node_modules/
+.npm/
+
+# environment — never commit real credentials
+.env
+.env.*
+!.env.example
+
+# build output
+dist/
+build/
+*.tsbuildinfo
+apps/web/dist/
+apps/api/dist/
+
+# test / coverage
+coverage/
+.vitest/
+playwright-report/
+test-results/
+
+# python (from Sprint 3 onward)
+.venv/
+__pycache__/
+*.py[cod]
+
+# logs
+*.log
+npm-debug.log*
+
+# editors / OS
+.vscode/
+.idea/
+.DS_Store
+*.swp

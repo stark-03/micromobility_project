@@ -1,0 +1,273 @@
+# CLAUDE.md
+
+Guidance for Claude Code when working in this repository.
+
+## What this project is
+
+**AI Urban Micro Mobility Simulator** — a platform that simulates, monitors and optimizes
+urban micro mobility (e-scooters, bicycles, e-bikes, shared EVs). It ingests live traffic and
+telemetry, forecasts demand and congestion, plans routes, and runs what-if scenarios in a
+virtual city so planners can test policy before deploying it.
+
+Users: city planners, mobility operators, commuters, researchers, system operators.
+
+Read `design.md` for architecture and `MODULES.md` for the module contracts before writing
+code that spans more than one module.
+
+## Stack
+
+| Layer | Choice | Notes |
+|---|---|---|
+| Frontend | React 18 + Vite + TypeScript | SPA |
+| UI kit | Material UI v5 | all interactive components |
+| Styling | Tailwind CSS v3.4 | layout, spacing, one-off utilities |
+| State | TanStack Query (server) + Zustand (client) | no Redux |
+| Maps | MapLibre GL + deck.gl | heat maps, route lines |
+| Charts | Recharts | |
+| Backend | Node 22 LTS + Express 4 + TypeScript | |
+| ORM | Sequelize 6 + **`mysql2`** driver + umzug migrations | `mysql2`, never the legacy `mysql` package |
+| Database | **MySQL 8.4 LTS, installed locally** | not MongoDB — the "M" here is MySQL |
+| Cache/queue | in-process (`node-cache` + a simple job runner) | Redis/BullMQ is a later swap, see below |
+| Realtime | Socket.IO | single process, in-memory adapter |
+| ML / simulation | Python 3.13 + FastAPI, scikit-learn, LightGBM, PyTorch, NetworkX, SimPy | separate service, own venv |
+| Auth | JWT access + httpOnly refresh cookie | |
+| Tests | Vitest + Supertest (JS), pytest (Python), Playwright (E2E) | |
+
+## Repository layout
+
+```
+/apps
+  /web            React SPA
+    /src
+      /app        router, providers, theme
+      /modules    one folder per module (M01…M16), colocated
+      /components shared UI
+      /lib        api client, hooks, formatters
+      /styles     tokens.css, tailwind.css
+  /api            Express service
+    /src
+      /modules    one folder per module: routes, controller, service, dto
+      /db         models, migrations, seeders
+      /middleware auth, rbac, validate, error
+      /realtime   socket gateway, rooms
+      /jobs       scheduled workers (node-cron), job runner
+      /cache      cache adapter (memory now, Redis later)
+      /config
+  /ml             FastAPI service
+    /app
+      /models     demand, congestion, anomaly
+      /routing    graph, astar, costs
+      /sim        engine, agents, scenarios
+      /training   pipelines, evaluation
+/packages
+  /shared-types   TS types shared by web and api
+/docs             design.md, MODULES.md, adr/
+/scripts          db bootstrap, seed helpers
+```
+
+No `/infra`, no Dockerfiles, no compose file. MySQL runs on the developer's machine. Containers
+are a shipping-time concern and will be added only when asked for.
+
+## Local setup
+
+Confirmed toolchain on the dev machine (Linux x86_64) — **no Docker**:
+
+| Tool | Installed | Status |
+|---|---|---|
+| MySQL | 8.4.10 (source distribution) | LTS, good for the whole project |
+| Node | v22.23.1 | LTS |
+| npm | 10.9.8 | workspaces supported |
+| Python | 3.13.11 | see the ML venv note below |
+| Redis | not installed | **not required, don't install it yet** |
+
+Create the database and app user once:
+
+```sql
+CREATE DATABASE micromobility CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+CREATE DATABASE micromobility_test CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+
+CREATE USER 'mm_app'@'localhost'
+  IDENTIFIED WITH caching_sha2_password BY 'change_me';
+
+GRANT ALL PRIVILEGES ON micromobility.*      TO 'mm_app'@'localhost';
+GRANT ALL PRIVILEGES ON micromobility_test.* TO 'mm_app'@'localhost';
+FLUSH PRIVILEGES;
+```
+
+### Version notes that actually affect the code
+
+**MySQL 8.4 removed `mysql_native_password`.** The server authenticates with
+`caching_sha2_password` and there is no falling back. Consequences:
+- Sequelize must use the `mysql2` driver. The legacy `mysql` package cannot complete this
+  handshake — if you see `ER_NOT_SUPPORTED_AUTH_MODE`, that's the cause.
+- Over a plain localhost socket, `mysql2` needs the server's public key for the initial
+  password exchange. Set `dialectOptions: { allowPublicKeyRetrieval: true }` in the Sequelize
+  config for local development only. Never set it against a remote server — use TLS there.
+- Don't "fix" auth errors by recreating the user with `mysql_native_password`. The plugin isn't
+  there.
+
+**Python 3.13 is newer than parts of the ML ecosystem.** `scikit-learn`, `LightGBM`, `NetworkX`,
+`SimPy`, `pandas`, `NumPy` and `FastAPI` all have 3.13 wheels. Heavier frameworks are the risk:
+if a wheel is missing, pip falls back to building from source and the install takes forever or
+fails on a missing compiler.
+- Always work inside `apps/ml/.venv`. Never `pip install` into the system Python.
+- Pin everything in `requirements.txt` with hashes generated by `pip-compile`.
+- Prefer LightGBM over PyTorch/TensorFlow for the shipped models — it's smaller, faster to
+  train on CPU, and beats a small neural net on this kind of tabular forecasting anyway. Deep
+  learning is optional and only for the comparison section of the report.
+- If a package genuinely has no 3.13 wheel, say so and propose either dropping it or creating
+  the venv with a 3.12 interpreter. Don't silently switch to a source build.
+
+**Node 22 built-ins worth using instead of dependencies:**
+- `node --env-file=.env` — no `dotenv` package needed for local dev.
+- `node --watch` — no `nodemon`.
+- Native `fetch`, `AbortController`, `structuredClone` — no `axios`, no `node-fetch`.
+- `worker_threads` is what the inline job runner uses for simulation runs.
+
+`.env` (copied from `.env.example`):
+
+```
+DB_HOST=localhost
+DB_PORT=3306
+DB_NAME=micromobility
+DB_USER=mm_app
+DB_PASSWORD=change_me
+CACHE_DRIVER=memory          # switch to "redis" only when Redis is actually running
+QUEUE_DRIVER=inline          # "inline" runs jobs in-process
+ML_SERVICE_URL=http://localhost:8000
+ML_INTERNAL_SECRET=dev_only_secret
+```
+
+## Commands
+
+```bash
+# first run
+cp .env.example .env
+npm install
+npm run db:create                                      # creates the schema if missing
+npm run db:migrate
+npm run db:seed                                        # seeds Belagavi demo city
+
+# dev
+npm run dev              # web (5173) + api (4000) concurrently
+npm run dev:web
+npm run dev:api
+# ml service (first time)
+cd apps/ml && python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+
+# quality — run before declaring work done
+npm run typecheck
+npm run lint
+npm run test
+cd apps/ml && pytest && ruff check .
+
+# db
+npm run db:migrate
+npm run db:migrate:undo
+npm run db:make -- add_station_occupancy_index
+```
+
+## Conventions
+
+### API
+- All routes under `/api/v1`. Public GBFS feeds live at `/gbfs/*` and are unauthenticated.
+- Success envelope: `{ "data": ..., "meta": { ... } }`. Error envelope:
+  `{ "error": { "code": "VEHICLE_NOT_FOUND", "message": "...", "details": [...] } }`.
+  `code` is a stable SCREAMING_SNAKE string — the frontend switches on it, never on `message`.
+- Validate every request body and query with **zod** at the route boundary. Controllers receive
+  parsed, typed input and never touch `req` directly beyond `req.user`.
+- Pagination is cursor-based for feeds (`?cursor=&limit=`), offset-based only for admin tables.
+- Every mutating route declares roles: `router.post('/', requireRole('operator','admin'), ...)`.
+
+### Database
+- Tables and columns are `snake_case` and plural for tables; models are `PascalCase` singular.
+- Every table gets `id BIGINT UNSIGNED AUTO_INCREMENT`, `created_at`, `updated_at`.
+  Soft delete via `deleted_at` only where history matters (vehicles, users, scenarios).
+- Timestamps stored UTC as `DATETIME(3)`. Convert at the edge, never in the middle.
+- Money: `DECIMAL(12,4)` and integer minor units in the API. Never floats.
+- Coordinates: MySQL `POINT` with SRID 4326 and a SPATIAL index. Polygons for zones/geofences.
+- High-volume tables (`traffic_readings`, `vehicle_telemetry`) are `RANGE` partitioned by month
+  with a monthly drop job. Never query them un-bounded by time.
+- **Migrations are immutable once merged.** Fix forward with a new migration.
+- No raw SQL in controllers. Repository/service layer only, and parameterize everything.
+
+### Frontend
+- **Division of labour: MUI owns components, Tailwind owns layout.**
+  Use Tailwind classes for flex/grid, gap, padding on plain wrappers. Use MUI's `sx` prop or
+  `styled()` for anything inside a MUI component. Do not fight MUI internals with `!important`
+  Tailwind classes — if you're reaching for that, the component needs a theme override in
+  `app/theme.ts` instead.
+- Tailwind runs with `corePlugins.preflight: false`; MUI's `CssBaseline` provides the reset.
+  `StyledEngineProvider injectFirst` is already set so Tailwind wins ties.
+- Colors, spacing and type come from CSS variables in `styles/tokens.css`. Both the Tailwind
+  config and the MUI theme read those variables. **Never hardcode a hex value in a component.**
+- Data fetching is TanStack Query with keys `['module', 'resource', params]`. No `useEffect` +
+  `fetch`. Mutations invalidate precise keys, not the whole cache.
+- Every screen handles four states explicitly: loading (MUI `Skeleton`), empty (with a next
+  action), error (with retry), ready. Empty states say what to do, not "no data".
+- Feature code lives in `src/modules/<module>/`. Cross-module imports go through a module's
+  `index.ts` barrel only.
+
+### ML service
+- Express is the only caller of the ML service; the browser never talks to port 8000.
+  Internal routes are prefixed `/internal/` and require a shared secret header.
+- Training is always a job, never a request handler. Inference must return in <300 ms or be
+  queued.
+- Any model that ships records its metrics in `model_registry`. Report MAE/RMSE/MAPE for
+  regression and PR-AUC for anomaly flags. A model with no recorded eval does not get an
+  `is_active` flag.
+- Simulation runs take an explicit `seed`. Same seed + same scenario = same metrics, and there
+  is a test asserting exactly that.
+
+### Realtime
+- Socket rooms: `zone:<id>`, `run:<id>`, `user:<id>`, `operator:<id>`. Join is authorized on
+  connect against the user's roles — never trust a client-supplied room name.
+- Single API process, so Socket.IO's default in-memory adapter is fine. Workers publish through
+  a local `EventEmitter` bus (`realtime/bus.ts`); only the gateway touches sockets. If the app
+  ever runs on more than one process, the bus is the one place to swap in the Redis adapter.
+
+### Caching and background jobs (no Redis for now)
+- All caching goes through `cache/index.ts`, which exposes `get`, `set`, `del`, `wrap(key, ttl, fn)`
+  and is backed by `node-cache` when `CACHE_DRIVER=memory`. **Never call a cache library
+  directly from a service** — the whole point is that switching to Redis is a one-file change.
+- Cached things and their TTLs are declared in `cache/keys.ts`: `traffic:snapshot:<zoneId>` 15 s,
+  `route:<hash>` 60 s, `kpi:<scope>:<day>` 10 min. An in-memory cache dies on restart, which is
+  correct behaviour here — nothing cached is a source of truth.
+- Background work goes through `jobs/runner.ts`. With `QUEUE_DRIVER=inline` a job runs in-process
+  on a worker thread and writes progress to its DB row (`simulation_runs.status`, `model_runs`).
+  The client polls or listens on the socket; it never assumes a queue exists.
+- Scheduled work uses `node-cron` inside the API process: weather poll (15 min), traffic snapshot
+  (1 min), nightly rollups (02:00), partition maintenance (monthly).
+- Long simulation runs are still async — they just aren't distributed. Keep the job interface
+  (`enqueue(name, payload) → jobId`) identical to what BullMQ would need, so adding Redis later
+  is a driver swap and nothing else.
+
+## Guardrails
+
+- Never commit `.env`, keys, or real rider data. Seed data is synthetic.
+- Never log coordinates tied to a `user_id` at info level. Trip geometry is sensitive; aggregate
+  before it reaches analytics tables, and `k >= 5` before any zone-level breakdown is exposed.
+- No card data touches this system. Payments go through the gateway adapter; we store only
+  provider references.
+- Don't add a dependency that duplicates one already listed above (no axios+fetch mix, no second
+  chart library, no Moment.js — use `date-fns`), and don't add one that Node 22 already provides
+  (`dotenv`, `nodemon`, `node-fetch`, `axios` are all unnecessary here).
+- Don't introduce MongoDB, Mongoose, or Prisma. The schema is relational and migration-managed.
+- Don't put business logic in React components or Express route files.
+- **Don't add Docker, docker-compose, or Dockerfiles.** Everything runs natively. Containers are
+  a shipping-time decision and will be requested explicitly.
+- **Don't add `redis`, `ioredis`, or `bullmq` to `package.json`** while `CACHE_DRIVER=memory`.
+  If a feature seems to need Redis, say so and propose the memory-backed version first.
+- Setup instructions and scripts assume a locally installed MySQL. Don't write a script that
+  shells out to `docker` to start a database.
+
+## Working style
+
+- Small, focused changes. One module per PR where possible.
+- When a change touches the DB, write the migration and the model in the same commit.
+- Update `MODULES.md` when an endpoint contract changes, and `design.md` when a boundary moves.
+- Significant architectural decisions get a short ADR in `docs/adr/NNNN-title.md`.
+- Before finishing: `npm run typecheck && npm run lint && npm run test` must pass. If a test is
+  failing for a reason unrelated to your change, say so rather than skipping it.
+- Prefer reading the existing module next door over inventing a new pattern.
