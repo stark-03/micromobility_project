@@ -1,0 +1,51 @@
+/*
+ * Single source of truth for colour, type and rhythm.
+ * Both tailwind.config.js and app/theme.ts read these variables.
+ * Values are copied verbatim from docs/design.md §6.2 — do not drift.
+ * NEVER hardcode a hex value in a component.
+ */
+:root {
+  /* ground */
+  --ink-950: #070b14; /* app background */
+  --ink-900: #0d1424; /* surface */
+  --ink-800: #16203a; /* raised surface, cards */
+  --ink-700: #223052; /* borders, dividers */
+  --mist-400: #8095b8; /* secondary text */
+  --mist-100: #e6edf8; /* primary text */
+
+  /* line colors — one per mode, used on map and in every legend */
+  --line-scooter: #f2a20c;
+  --line-bike: #00b3a4;
+  --line-ebike: #7c5cff;
+  --line-ev: #4d8df7;
+
+  /* congestion ramp — free → jammed. RESERVED for congestion only.
+     Never use --flow-* for a generic chart series. */
+  --flow-0: #3dd68c;
+  --flow-1: #c9d93b;
+  --flow-2: #f2c94c;
+  --flow-3: #f2762e;
+  --flow-4: #e5484d;
+
+  /* status */
+  --ok: #3dd68c;
+  --warn: #f2c94c;
+  --danger: #e5484d;
+  --info: #4d8df7;
+
+  /* type */
+  --font-display: 'Archivo', system-ui, sans-serif; /* 600/700, tight tracking */
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  /* rhythm */
+  --r-sm: 4px;
+  --r-md: 8px;
+  --r-lg: 14px;
+  --shadow-card:
+    0 1px 0 rgba(255, 255, 255, 0.04), 0 8px 24px rgba(0, 0, 0, 0.45);
+
+  /* shell metrics — design.md §6.4 */
+  --topbar-h: 56px;
+  --rail-w: 64px;
+}
