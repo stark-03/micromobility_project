@@ -1,0 +1,38 @@
+{
+  "name": "ai-urban-micromobility-simulator",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.18.0",
+    "npm": ">=10.0.0"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,web -c cyan,magenta \"npm:dev:api\" \"npm:dev:web\"",
+    "dev:api": "npm run dev -w @mm/api",
+    "dev:web": "npm run dev -w @mm/web",
+    "build": "npm run build -w @mm/shared-types && npm run build -w @mm/api && npm run build -w @mm/web",
+    "typecheck": "tsc -b --pretty",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "test": "vitest run",
+    "db:create": "npm run db:create -w @mm/api",
+    "db:migrate": "npm run db:migrate -w @mm/api",
+    "db:migrate:undo": "npm run db:migrate:undo -w @mm/api",
+    "db:make": "npm run db:make -w @mm/api",
+    "db:seed": "npm run db:seed -w @mm/api"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.18.0",
+    "concurrently": "^9.1.0",
+    "eslint": "^9.18.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.9.0",
+    "typescript-eslint": "^8.20.0",
+    "vitest": "^3.2.0"
+  }
+}
