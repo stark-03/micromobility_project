@@ -203,16 +203,28 @@ Mirrors `traffic_readings`: `PRIMARY KEY (id, recorded_at)`,
 creates partitions for the current and next few months; the monthly maintenance job is
 Sprint 2 work.
 
-Three MySQL facts this forces, none of which appear in the source specs:
+Four MySQL facts this forces, none of which appear in the source specs:
 
 1. **Partitioned tables cannot carry foreign keys.** `vehicle_telemetry.vehicle_id` gets an
    index and application-level integrity instead. `traffic_readings` in `design.md` §3.2
    already reflects this constraint.
-2. **Partitioned tables cannot carry SPATIAL indexes.** `position POINT SRID 4326` is stored
-   but unindexed. Acceptable: every query is bounded by `vehicle_id` and a time range, per the
-   CLAUDE.md rule that these tables are never queried un-bounded by time.
-3. **`DECIMAL` returns from `mysql2` as a string.** DTO mappers convert at the API boundary so
-   no consumer ever receives a string where the contract promises a number.
+2. **Partitioned tables cannot carry SPATIAL indexes.**
+3. **Partitioned tables cannot carry `GEOMETRY` columns at all** — not merely their indexes.
+   Discovered during implementation: a `POINT` column on this table fails outright with
+   `ER_CHECK_NOT_IMPLEMENTED`, *"The storage engine for the table doesn't support GEOMETRY"*.
+   This corrects point 2 as originally written, which assumed the column was storable and only
+   the index forbidden.
+
+   **Resolution:** position is stored as `lat DECIMAL(9,6)` and `lng DECIMAL(10,6)`. Six decimal
+   places is roughly 0.11 m, comfortably inside GPS error. The DTO mapper rebuilds a `GeoPoint`,
+   so `TelemetryDto.position` is unchanged and the API contract matches every other positioned
+   entity. Nothing is lost: telemetry is only ever queried by `vehicle_id` + time range, never
+   spatially. `traffic_readings` in `design.md` §3.2 carries no geometry column either — it
+   references `segment_id` and lets `road_segments` hold the shape — which is the same pattern
+   arrived at independently.
+4. **`DECIMAL` returns from `mysql2` as a string.** DTO mappers convert at the API boundary so
+   no consumer ever receives a string where the contract promises a number. This now also
+   applies to telemetry `lat`/`lng`.
 
 ---
 
@@ -339,12 +351,15 @@ on ML absence until Sprint 3 introduces the service.
 | `REFRESH_TOKEN_INVALID` | 401 |
 | `REFRESH_TOKEN_REUSED` | 401 |
 | `FORBIDDEN` | 403 |
+| `ROUTE_NOT_FOUND` | 404 |
 | `USER_NOT_FOUND` | 404 |
 | `VEHICLE_NOT_FOUND` | 404 |
 | `MAINTENANCE_TICKET_NOT_FOUND` | 404 |
 | `SAVED_PLACE_NOT_FOUND` | 404 |
 | `EMAIL_ALREADY_REGISTERED` | 409 |
 | `VEHICLE_REF_ALREADY_EXISTS` | 409 |
+| `SAVED_PLACE_LABEL_EXISTS` | 409 |
+| `LAST_ADMIN_PROTECTED` | 409 |
 | `INVALID_STATE_TRANSITION` | 409 |
 | `RATE_LIMITED` | 429 |
 | `INTERNAL_ERROR` | 500 |
