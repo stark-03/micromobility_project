@@ -351,6 +351,7 @@ on ML absence until Sprint 3 introduces the service.
 | `REFRESH_TOKEN_INVALID` | 401 |
 | `REFRESH_TOKEN_REUSED` | 401 |
 | `FORBIDDEN` | 403 |
+| `ROUTE_NOT_FOUND` | 404 |
 | `USER_NOT_FOUND` | 404 |
 | `VEHICLE_NOT_FOUND` | 404 |
 | `MAINTENANCE_TICKET_NOT_FOUND` | 404 |
