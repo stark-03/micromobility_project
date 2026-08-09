@@ -234,6 +234,64 @@ export interface ApiKeyDto {
   createdAt: string;
 }
 
+// ---- M02 traffic / M12 weather ---------------------------------------------
+
+export interface SegmentTrafficDto {
+  segmentId: string;
+  name: string | null;
+  zoneId: string | null;
+  roadClass: RoadClass;
+  geometry: GeoLineString;
+  lengthM: number;
+  speedFreeKph: number;
+  meanSpeedKph: number | null;
+  vehicleCount: number | null;
+  occupancy: number | null;
+  /** 0 = free flow, 1 = jammed. Maps onto the --flow-* ramp. */
+  congestionIndex: number;
+  /** 0-4 bucket for the legend, derived from congestionIndex. */
+  flowBand: 0 | 1 | 2 | 3 | 4;
+  computedAt: string | null;
+}
+
+export interface TrafficLiveDto {
+  segments: SegmentTrafficDto[];
+  generatedAt: string;
+  /** Mean congestion across the returned segments. */
+  cityCongestionIndex: number;
+}
+
+export interface WeatherDto {
+  zoneId: string;
+  zoneName: string;
+  observedAt: string;
+  tempC: number | null;
+  precipitationMm: number | null;
+  windKph: number | null;
+  visibilityM: number | null;
+  conditionCode: string | null;
+}
+
+export interface KpiDto {
+  vehiclesTotal: number;
+  vehiclesAvailable: number;
+  vehiclesInUse: number;
+  segmentsMonitored: number;
+  cityCongestionIndex: number;
+  congestedSegments: number;
+  readingsLastHour: number;
+  tripsToday: number;
+}
+
+/** Bucket a 0-1 congestion index into the five-step --flow-* ramp. */
+export function flowBandFor(index: number): 0 | 1 | 2 | 3 | 4 {
+  if (index < 0.2) return 0;
+  if (index < 0.4) return 1;
+  if (index < 0.6) return 2;
+  if (index < 0.8) return 3;
+  return 4;
+}
+
 export interface AuthResponseDto {
   accessToken: string;
   user: UserDto;

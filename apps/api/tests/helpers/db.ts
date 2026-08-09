@@ -47,6 +47,10 @@ ensureModels(testDb);
  * order correct means this still works if that ever stops being true.
  */
 const TABLES = [
+  'traffic_readings',
+  'traffic_snapshots',
+  'weather_readings',
+  'weather_forecasts',
   'vehicle_telemetry',
   'vehicle_status_history',
   'maintenance_tickets',

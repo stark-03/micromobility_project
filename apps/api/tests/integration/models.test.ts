@@ -13,7 +13,7 @@ afterAll(async () => {
 
 describe('models', () => {
   it('defines all 16 tables', () => {
-    expect(Object.keys(models)).toHaveLength(16);
+    expect(Object.keys(models)).toHaveLength(20);
   });
 
   // Every attribute a model declares must exist as a column, or the SELECT

@@ -24,7 +24,8 @@
     "db:migrate": "npm run db:migrate -w @mm/api",
     "db:migrate:undo": "npm run db:migrate:undo -w @mm/api",
     "db:make": "npm run db:make -w @mm/api",
-    "db:seed": "npm run db:seed -w @mm/api"
+    "db:seed": "npm run db:seed -w @mm/api",
+    "traffic:sim": "node --env-file=.env apps/api/scripts/traffic-sim.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.18.0",
