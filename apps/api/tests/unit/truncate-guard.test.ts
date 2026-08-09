@@ -7,15 +7,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
  *
  * These tests prove the guard refuses to load rather than trusting a comment.
  */
-const ORIGINAL = process.env.DB_NAME_TEST;
+const ORIGINAL_TEST_DB = process.env.DB_NAME_TEST;
+const ORIGINAL_NODE_ENV = process.env.NODE_ENV;
 
 beforeEach(() => {
   vi.resetModules();
 });
 
 afterEach(() => {
-  if (ORIGINAL === undefined) delete process.env.DB_NAME_TEST;
-  else process.env.DB_NAME_TEST = ORIGINAL;
+  if (ORIGINAL_TEST_DB === undefined) delete process.env.DB_NAME_TEST;
+  else process.env.DB_NAME_TEST = ORIGINAL_TEST_DB;
+  if (ORIGINAL_NODE_ENV === undefined) delete process.env.NODE_ENV;
+  else process.env.NODE_ENV = ORIGINAL_NODE_ENV;
   vi.resetModules();
 });
 
@@ -35,8 +38,15 @@ describe('truncate guard', () => {
     await expect(import('../helpers/db.ts')).rejects.toThrow(/personal_tracker/);
   });
 
-  it('loads normally for a _test schema', async () => {
+  it('refuses to load when NODE_ENV is not test, because the app points at DEV', async () => {
     process.env.DB_NAME_TEST = 'micromobility_test';
+    process.env.NODE_ENV = 'development';
+    await expect(import('../helpers/db.ts')).rejects.toThrow(/Run tests with NODE_ENV=test/);
+  });
+
+  it('loads normally for a _test schema in test mode', async () => {
+    process.env.DB_NAME_TEST = 'micromobility_test';
+    process.env.NODE_ENV = 'test';
     const mod = await import('../helpers/db.ts');
     expect(mod.truncateAll).toBeTypeOf('function');
     await mod.testDb.close();

@@ -19,9 +19,21 @@ export interface AccessTokenClaims {
 
 export function issueAccessToken(claims: AccessTokenClaims): string {
   return jwt.sign(
-    { email: claims.email, roles: claims.roles, operatorId: claims.operatorId },
+    {
+      email: claims.email,
+      roles: claims.roles,
+      operatorId: claims.operatorId === null ? null : String(claims.operatorId),
+    },
     env.jwt.accessSecret,
-    { subject: claims.sub, expiresIn: env.jwt.accessTtl } as jwt.SignOptions,
+    {
+      // Coerced deliberately. A model returned by Model.create() carries the
+      // driver's numeric insertId, while one returned by a SELECT carries a
+      // string (dialectOptions.bigNumberStrings). jsonwebtoken rejects a
+      // non-string `subject` outright, so registration would 500 while login
+      // succeeded. Normalising here fixes the whole class at one choke point.
+      subject: String(claims.sub),
+      expiresIn: env.jwt.accessTtl,
+    } as jwt.SignOptions,
   );
 }
 

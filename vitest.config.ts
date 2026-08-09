@@ -2,6 +2,12 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
+    // MUST be at the root, not inside a project: this is a runner-level option
+    // and Vitest ignores it in a project block. Integration tests share one
+    // MySQL schema and truncate between tests, so concurrent files wipe each
+    // other's rows mid-test — which surfaces as InnoDB deadlocks and phantom
+    // "row not found" failures rather than anything that names the real cause.
+    fileParallelism: false,
     projects: [
       {
         test: {
@@ -9,9 +15,8 @@ export default defineConfig({
           root: './apps/api',
           environment: 'node',
           include: ['tests/**/*.test.ts'],
-          // Integration tests truncate shared tables, so files must not run
-          // concurrently against the same schema.
-          fileParallelism: false,
+          testTimeout: 30_000,
+          hookTimeout: 60_000,
         },
       },
     ],

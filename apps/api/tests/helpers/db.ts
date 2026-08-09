@@ -1,9 +1,7 @@
 import { QueryTypes } from 'sequelize';
-import { env } from '../../src/config/env.ts';
-import { buildSequelize } from '../../src/db/index.ts';
+import { activeDbName, env } from '../../src/config/env.ts';
+import { sequelize } from '../../src/db/index.ts';
 import { ensureModels } from '../../src/db/models/index.ts';
-
-const TARGET = env.db.nameTest;
 
 /**
  * GUARD 1 — configuration.
@@ -12,14 +10,36 @@ const TARGET = env.db.nameTest;
  * pointed at the wrong schema destroys someone else's work, so refuse to load
  * at all unless the target is explicitly a *_test schema.
  */
-if (!TARGET.endsWith('_test')) {
+if (!env.db.nameTest.endsWith('_test')) {
   throw new Error(
-    `Refusing to load the test DB helper: DB_NAME_TEST is "${TARGET}", ` +
+    `Refusing to load the test DB helper: DB_NAME_TEST is "${env.db.nameTest}", ` +
       'which does not end in _test. Truncation would be catastrophic.',
   );
 }
 
-export const testDb = buildSequelize(TARGET);
+/**
+ * GUARD 2 — the process is actually in test mode.
+ *
+ * Without NODE_ENV=test the app's Sequelize instance points at the DEV schema,
+ * and truncating would wipe the seeded Belagavi city.
+ */
+if (!activeDbName.endsWith('_test')) {
+  throw new Error(
+    `Refusing to load the test DB helper: the app is connected to "${activeDbName}". ` +
+      'Run tests with NODE_ENV=test.',
+  );
+}
+
+/**
+ * Deliberately the APPLICATION'S Sequelize instance, not a second one.
+ *
+ * Services open transactions on this instance (`sequelize.transaction(...)`).
+ * If tests bound the models to a different instance, a transaction handle from
+ * one pool would be passed to queries running on another — locks would not
+ * apply, and rollbacks would silently fail to undo anything. That bug is
+ * invisible to a model smoke test and shows up much later as flaky isolation.
+ */
+export const testDb = sequelize;
 ensureModels(testDb);
 
 /**
@@ -47,11 +67,10 @@ const TABLES = [
 
 export async function truncateAll(): Promise<void> {
   /**
-   * GUARD 2 — the live connection.
+   * GUARD 3 — the live connection.
    *
-   * Checked separately from GUARD 1 because the two can disagree: .env may be
-   * edited between module load and this call, and a pooled connection could in
-   * principle have been built against a different schema.
+   * Checked separately because configuration and reality can disagree: .env may
+   * be edited between module load and this call.
    */
   const current = await testDb.query<{ db: string | null }>('SELECT DATABASE() AS db', {
     type: QueryTypes.SELECT,
