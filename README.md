@@ -144,6 +144,51 @@ Open <http://localhost:5173> and sign in as `admin@belagavi.local`.
 
 ---
 
+## Running a five-minute demo
+
+From a cold laptop:
+
+```bash
+# 1. MySQL must be running
+systemctl is-active mysqld        # or: mysql.server start
+
+# 2. One terminal, both services
+cd "<project root>"
+npm run dev                       # api :4000, web :5173
+```
+
+Then, in the browser:
+
+1. **<http://localhost:5173>** → redirects to `/signin`.
+2. Sign in as `admin@belagavi.local` with the password `db:seed` printed.
+   A wrong password shows *"That email and password don't match."* — the screen
+   switches on the error **code**, never the message.
+3. You land on **Fleet**: 60 vehicles across two operators and eight Belagavi zones.
+   - The coloured dot is the vehicle mode, always beside its label.
+   - Battery is monospaced with tabular figures, tinted green / amber / red.
+   - Status is a chip; the congestion ramp is deliberately *not* used here.
+4. Change the **Status** filter to `charging` — the grid refetches server-side and
+   the row count in the footer updates.
+5. Set it to `retired` — the empty state appears and tells you what to do next,
+   with a **Clear filters** button.
+6. Hover any of the five dimmed rail icons — each says which sprint it arrives in.
+7. **Sign out** → back to `/signin`. Reload the page: you stay signed out, because
+   the access token only ever lived in memory.
+
+To show the API directly:
+
+```bash
+TOKEN=$(curl -s -X POST localhost:4000/api/v1/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"admin@belagavi.local","password":"<printed password>"}' \
+  | python3 -c "import sys,json;print(json.load(sys.stdin)['data']['accessToken'])")
+
+curl -s "localhost:4000/api/v1/vehicles?limit=2" -H "Authorization: Bearer $TOKEN"
+curl -s localhost:4000/readyz
+```
+
+---
+
 ## Commands
 
 ```bash

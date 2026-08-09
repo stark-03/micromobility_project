@@ -1,13 +1,37 @@
+import { CssBaseline, StyledEngineProvider, ThemeProvider } from '@mui/material';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createRoot } from 'react-dom/client';
-import './styles/tailwind.css';
+import { RouterProvider } from 'react-router-dom';
 
-// Placeholder shell — Task 18 replaces this with providers, theme and router.
+// Self-hosted fonts — no CDN request, so the app works offline.
+import '@fontsource/archivo/600.css';
+import '@fontsource/archivo/700.css';
+import '@fontsource/inter/400.css';
+import '@fontsource/inter/500.css';
+import '@fontsource/ibm-plex-mono/400.css';
+
+import './styles/tailwind.css';
+import { router } from './app/router.tsx';
+import { theme } from './app/theme.ts';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: { retry: 1, staleTime: 30_000, refetchOnWindowFocus: false },
+  },
+});
+
 const root = document.getElementById('root');
 if (!root) throw new Error('#root not found');
 
 createRoot(root).render(
-  <div className="bg-ink-950 text-mist-100 font-sans min-h-screen p-8">
-    <h1 className="font-display text-2xl text-info">Scaffold OK</h1>
-    <p className="text-mist-400 mt-2">Design tokens are wired through Tailwind.</p>
-  </div>,
+  // injectFirst puts MUI's styles before Tailwind's in the cascade, so a
+  // Tailwind utility on a wrapper wins without !important (design.md §6.8).
+  <StyledEngineProvider injectFirst>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>
+    </ThemeProvider>
+  </StyledEngineProvider>,
 );
