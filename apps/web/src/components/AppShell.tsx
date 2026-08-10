@@ -24,7 +24,7 @@ interface Destination {
 }
 
 /**
- * design.md §6.4 order. Only Fleet is built in Sprint 1; the other five render
+ * design.md §6.4 order. Live and Fleet are built; the other four render
  * disabled with a tooltip naming their sprint.
  *
  * Showing them is deliberate: hiding the product's real shape makes the app
@@ -32,7 +32,7 @@ interface Destination {
  * that says when it arrives is honest.
  */
 const DESTINATIONS: Destination[] = [
-  { key: 'live', label: 'Live', icon: <MapOutlined />, arrives: 'Sprint 2' },
+  { key: 'live', label: 'Live', icon: <MapOutlined />, path: '/live' },
   { key: 'plan', label: 'Plan', icon: <ExploreOutlined />, arrives: 'Sprint 3' },
   { key: 'sim', label: 'Sim', icon: <HexagonOutlined />, arrives: 'Sprint 4' },
   { key: 'fleet', label: 'Fleet', icon: <TwoWheelerOutlined />, path: '/fleet' },
