@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 // maplibre-gl v6 is ESM with no default export — named imports only.
 import { Map as MapLibreMap, NavigationControl, ScaleControl } from 'maplibre-gl';
 import type {
@@ -8,6 +8,7 @@ import type {
   StyleSpecification,
 } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import { Box, Typography } from '@mui/material';
 import type { SegmentTrafficDto, ZoneDto } from '@mm/shared-types';
 import { flowRamp, token } from '../../lib/tokens.ts';
 
@@ -77,25 +78,52 @@ export function CityMap({ zones, segments, basemap, onSelectSegment }: CityMapPr
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<MapLibreMap | null>(null);
   const ready = useRef(false);
-  const onSelect = useRef(onSelectSegment);
-  onSelect.current = onSelectSegment;
+  const [failure, setFailure] = useState<string | null>(null);
+
+  // Latest props, read from inside long-lived MapLibre handlers. Without this
+  // the click handler closes over the segment list as it was when the map was
+  // created — the empty array — so every click selected nothing.
+  const latest = useRef({ segments, onSelectSegment });
+  latest.current = { segments, onSelectSegment };
 
   // ---- create once ---------------------------------------------------------
   useEffect(() => {
     if (!container.current || map.current) return;
 
-    const m = new MapLibreMap({
-      container: container.current,
-      style: baseStyle(),
-      center: BELAGAVI_CENTRE,
-      zoom: 12.4,
-      attributionControl: false,
-    });
+    let m: MapLibreMap;
+    try {
+      m = new MapLibreMap({
+        container: container.current,
+        style: baseStyle(),
+        center: BELAGAVI_CENTRE,
+        zoom: 12.4,
+        attributionControl: false,
+      });
+    } catch (e) {
+      // Usually WebGL being unavailable. Say so rather than showing a void.
+      setFailure(e instanceof Error ? e.message : String(e));
+      return;
+    }
     map.current = m;
 
-    m.addControl(new NavigationControl({ showCompass: false }), 'top-right');
-    m.addControl(new ScaleControl({ unit: 'metric' }), 'bottom-right');
+    // MapLibre logs errors to the console and carries on, so a bad layer or a
+    // dead tile host just reads as "the map is blank". Surface it instead.
+    m.on('error', (e: { error?: Error }) => {
+      const message = e.error?.message ?? 'Unknown MapLibre error';
+      // A failed basemap tile is not fatal — our own data still renders.
+      if (/tile|raster|openstreetmap/i.test(message)) return;
+      setFailure(message);
+    });
 
+    // Register the load handler BEFORE anything else that could throw.
+    //
+    // This ordering is the whole ballgame. ScaleControl throws if the map has
+    // no measurable size when it is added — which happens whenever the
+    // container is still 0x0 at construction. With the controls added first,
+    // that exception aborted the rest of this effect, so `m.on('load')` was
+    // never attached, no sources or layers were ever created, and the map sat
+    // permanently blank behind a single console error. Data first, chrome
+    // second.
     m.on('load', () => {
       const ramp = flowRamp();
 
@@ -159,12 +187,9 @@ export function CityMap({ zones, segments, basemap, onSelectSegment }: CityMapPr
       });
 
       m.on('click', 'segment-hit', (e: MapLayerMouseEvent) => {
-        const f = e.features?.[0];
-        onSelect.current?.(
-          f
-            ? (segments.find((s) => s.segmentId === String(f.properties?.segmentId)) ?? null)
-            : null,
-        );
+        const id = e.features?.[0]?.properties?.segmentId;
+        const { segments: current, onSelectSegment: cb } = latest.current;
+        cb?.(current.find((s) => s.segmentId === String(id)) ?? null);
       });
       m.on('mouseenter', 'segment-hit', () => {
         m.getCanvas().style.cursor = 'pointer';
@@ -174,11 +199,46 @@ export function CityMap({ zones, segments, basemap, onSelectSegment }: CityMapPr
       });
 
       ready.current = true;
+      // If the container was still being laid out when the map was built, the
+      // canvas is 0x0 and nothing draws. One explicit resize settles it.
+      m.resize();
+
+      // Chrome last, and non-fatally: a control that cannot measure the map
+      // must never cost us the layers we just added.
+      try {
+        m.addControl(new NavigationControl({ showCompass: false }), 'top-right');
+        m.addControl(new ScaleControl({ unit: 'metric' }), 'bottom-right');
+      } catch {
+        // Zoom buttons and a scale bar are a convenience; the city is the point.
+      }
     });
 
+    // Belt and braces for the same problem: the container gaining height after
+    // mount, or the context panel changing the available width.
+    //
+    // Guarded for the same reason the controls are: this effect must never be
+    // abandoned part-way by something incidental to drawing the city.
+    let observer: ResizeObserver | null = null;
+    try {
+      observer = new ResizeObserver(() => {
+        m.resize();
+      });
+      observer.observe(container.current);
+    } catch {
+      observer = null;
+    }
+
     return () => {
+      observer?.disconnect();
       ready.current = false;
-      m.remove();
+      try {
+        // Throws if the map never finished initialising — which happens for
+        // real if the user navigates away from /live before it loads.
+        // Unmounting must not take the app down with it.
+        m.remove();
+      } catch {
+        /* already gone */
+      }
       map.current = null;
     };
     // Deliberately empty: the map instance is created once and torn down on
@@ -231,5 +291,23 @@ export function CityMap({ zones, segments, basemap, onSelectSegment }: CityMapPr
     else m.once('load', apply);
   }, [basemap]);
 
-  return <div ref={container} className="h-full w-full" />;
+  return (
+    // absolute inset-0, not h-full: `height: 100%` on a child of a flex item
+    // depends on that item resolving a definite height, which is exactly the
+    // kind of thing that silently collapses to zero and leaves a blank canvas.
+    // Filling a positioned parent removes the question entirely.
+    <Box className="absolute inset-0">
+      <div ref={container} className="absolute inset-0" />
+      {failure && (
+        <Box className="absolute inset-x-0 top-0 z-20 border-b border-ink-700 bg-ink-900 px-4 py-2">
+          <Typography variant="overline" sx={{ color: 'var(--danger)' }}>
+            Map error
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {failure}
+          </Typography>
+        </Box>
+      )}
+    </Box>
+  );
 }

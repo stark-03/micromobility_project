@@ -29,3 +29,26 @@ import { afterEach } from 'vitest';
 afterEach(() => {
   cleanup();
 });
+
+/**
+ * jsdom implements neither ResizeObserver nor matchMedia. Both are baseline in
+ * every browser this app targets, so stubbing them keeps the tests
+ * representative rather than papering over a real gap.
+ */
+class ResizeObserverStub {
+  observe(): void {}
+  unobserve(): void {}
+  disconnect(): void {}
+}
+globalThis.ResizeObserver ??= ResizeObserverStub as unknown as typeof ResizeObserver;
+
+globalThis.matchMedia ??= ((q: string) => ({
+  matches: false,
+  media: q,
+  onchange: null,
+  addListener: () => {},
+  removeListener: () => {},
+  addEventListener: () => {},
+  removeEventListener: () => {},
+  dispatchEvent: () => false,
+})) as unknown as typeof globalThis.matchMedia;
