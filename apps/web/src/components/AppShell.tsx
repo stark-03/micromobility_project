@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { Box, Button, Tooltip, Typography } from '@mui/material';
 // Named imports from the package root, not deep paths: @mui/icons-material's
 // per-icon files have no `exports` entry, so `moduleResolution: nodenext`
@@ -11,7 +12,9 @@ import {
   SettingsOutlined,
   TwoWheelerOutlined,
 } from '@mui/icons-material';
+import type { WeatherDto } from '@mm/shared-types';
 import { api } from '../lib/api.ts';
+import { useRealtime } from '../lib/use-realtime.ts';
 import { useAuthStore } from '../lib/auth-store.ts';
 
 interface Destination {
@@ -40,6 +43,39 @@ const DESTINATIONS: Destination[] = [
   { key: 'admin', label: 'Admin', icon: <SettingsOutlined />, arrives: 'Sprint 6' },
 ];
 
+const CONDITION_GLYPH: Record<string, string> = {
+  clear: '\u2600',
+  cloudy: '\u2601',
+  light_rain: '\u2602',
+  heavy_rain: '\u2614',
+};
+
+/** design.md 6.4: weather sits in the map header, beside the clock. */
+function WeatherStrip() {
+  const weather = useQuery({
+    queryKey: ['weather', 'current'],
+    queryFn: () => api.get<WeatherDto[]>('/weather/current'),
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+
+  const readings = weather.data?.data ?? [];
+  if (readings.length === 0) return null;
+
+  // City figure = mean across zones, so the header does not privilege one zone.
+  const mean = readings.reduce((n, r) => n + (r.tempC ?? 0), 0) / readings.length;
+  const wettest = readings.reduce((a, b) => ((b.precipitationMm ?? 0) > (a.precipitationMm ?? 0) ? b : a));
+  const glyph = CONDITION_GLYPH[wettest.conditionCode ?? 'clear'] ?? '\u2601';
+
+  return (
+    <Tooltip title={`${wettest.zoneName}: ${wettest.conditionCode ?? 'unknown'}`}>
+      <Typography variant="body2" className="mono hidden whitespace-nowrap lg:block" color="text.secondary">
+        {glyph} {mean.toFixed(1)}\u00B0C
+      </Typography>
+    </Tooltip>
+  );
+}
+
 function TopBar() {
   const { user, clear } = useAuthStore();
   const navigate = useNavigate();
@@ -65,6 +101,7 @@ function TopBar() {
 
       <Box className="flex-1" />
 
+      <WeatherStrip />
       {user && (
         <>
           <Typography variant="body2" color="text.secondary" className="hidden sm:block">
@@ -132,6 +169,9 @@ function IconRail() {
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
+  // One socket for the whole shell; screens just react to invalidated queries.
+  useRealtime();
+
   return (
     <Box className="min-h-screen bg-ink-950">
       <TopBar />
