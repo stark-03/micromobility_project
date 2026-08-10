@@ -11,6 +11,15 @@ export default defineConfig({
     projects: [
       {
         test: {
+          name: 'web',
+          root: './apps/web',
+          environment: 'jsdom',
+          include: ['tests/**/*.test.{ts,tsx}'],
+          setupFiles: ['./tests/setup.ts'],
+        },
+      },
+      {
+        test: {
           name: 'api',
           root: './apps/api',
           environment: 'node',

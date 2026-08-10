@@ -10,9 +10,12 @@ import '@fontsource/inter/400.css';
 import '@fontsource/inter/500.css';
 import '@fontsource/ibm-plex-mono/400.css';
 
+// MUST come before createAppTheme(): the theme reads its palette out of the
+// computed styles, so the tokens have to be in the document first.
 import './styles/tailwind.css';
+
 import { router } from './app/router.tsx';
-import { theme } from './app/theme.ts';
+import { createAppTheme } from './app/theme.ts';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -22,6 +25,8 @@ const queryClient = new QueryClient({
 
 const root = document.getElementById('root');
 if (!root) throw new Error('#root not found');
+
+const theme = createAppTheme();
 
 createRoot(root).render(
   // injectFirst puts MUI's styles before Tailwind's in the cascade, so a
