@@ -25,7 +25,10 @@
     "db:migrate:undo": "npm run db:migrate:undo -w @mm/api",
     "db:make": "npm run db:make -w @mm/api",
     "db:seed": "npm run db:seed -w @mm/api",
-    "traffic:sim": "node --env-file=.env apps/api/scripts/traffic-sim.ts"
+    "traffic:sim": "node --env-file=.env apps/api/scripts/traffic-sim.ts",
+    "demo": "concurrently -n api,web,traffic -c cyan,magenta,yellow \"npm:dev:api\" \"npm:dev:web\" \"npm:demo:traffic\"",
+    "demo:traffic": "node --env-file=.env apps/api/scripts/traffic-sim.ts --hour 18.5 --interval 3000",
+    "demo:check": "node --env-file=.env scripts/preflight.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.18.0",
