@@ -70,7 +70,7 @@ function WeatherStrip() {
   return (
     <Tooltip title={`${wettest.zoneName}: ${wettest.conditionCode ?? 'unknown'}`}>
       <Typography variant="body2" className="mono hidden whitespace-nowrap lg:block" color="text.secondary">
-        {glyph} {mean.toFixed(1)}\u00B0C
+        {glyph} {mean.toFixed(1)}°C
       </Typography>
     </Tooltip>
   );

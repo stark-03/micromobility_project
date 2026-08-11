@@ -108,6 +108,7 @@ npm run typecheck && npm run lint && npm run test
 | Map is blank | No traffic data yet | `npm run demo:traffic` |
 | Map is all green | Off-peak in the diurnal curve | The `demo` script pins 18:30; if you ran `traffic:sim` bare, add `-- --hour 18.5` |
 | Map shows a red "Map error" banner | MapLibre failed | Read the banner — it names the cause |
+| `maplibre-gl-worker.mjs ... does not exist in the optimize deps directory` | Stale Vite dep cache | `rm -rf apps/web/node_modules/.vite` then restart |
 | Roads grey, not coloured | Snapshots empty | `npm run demo:traffic`, wait one tick |
 | "Could not reach the server" on sign-in | API not running | Check the `api` pane; `fuser -k 4000/tcp` then restart |
 | Colours never change | Socket blocked | Harmless — the map also polls every 15s |
