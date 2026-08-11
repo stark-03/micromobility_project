@@ -80,6 +80,27 @@ export function CityMap({ zones, segments, basemap, onSelectSegment }: CityMapPr
   const ready = useRef(false);
   const [failure, setFailure] = useState<string | null>(null);
 
+  /**
+   * Diagnostics.
+   *
+   * A blank MapLibre canvas has half a dozen possible causes that all look
+   * identical from the outside — no WebGL, a zero-size canvas, a style that
+   * never loaded, sources that never received data, or a camera pointed at
+   * empty ocean. Rather than guess, the map reports its own state.
+   *
+   * Shown while the map has drawn nothing; disappears once features are on
+   * screen, so it never clutters a working demo.
+   */
+  const [diag, setDiag] = useState({
+    webgl: 'checking',
+    container: '-',
+    canvas: '-',
+    styleLoaded: false,
+    zoneFeatures: 0,
+    segmentFeatures: 0,
+    centre: '-',
+  });
+
   // Latest props, read from inside long-lived MapLibre handlers. Without this
   // the click handler closes over the segment list as it was when the map was
   // created — the empty array — so every click selected nothing.
@@ -89,6 +110,26 @@ export function CityMap({ zones, segments, basemap, onSelectSegment }: CityMapPr
   // ---- create once ---------------------------------------------------------
   useEffect(() => {
     if (!container.current || map.current) return;
+
+    // Probe WebGL directly: MapLibre's own failure mode here is inconsistent
+    // across browsers, and Brave/Firefox fingerprint protection can disable it.
+    let webgl = 'none';
+    try {
+      const probe = document.createElement('canvas');
+      const gl =
+        probe.getContext('webgl2') ??
+        probe.getContext('webgl') ??
+        probe.getContext('experimental-webgl');
+      webgl = gl ? 'ok' : 'unavailable';
+    } catch {
+      webgl = 'blocked';
+    }
+    const rect = container.current.getBoundingClientRect();
+    setDiag((d) => ({
+      ...d,
+      webgl,
+      container: `${Math.round(rect.width)}x${Math.round(rect.height)}`,
+    }));
 
     let m: MapLibreMap;
     try {
@@ -203,6 +244,15 @@ export function CityMap({ zones, segments, basemap, onSelectSegment }: CityMapPr
       // canvas is 0x0 and nothing draws. One explicit resize settles it.
       m.resize();
 
+      const c = m.getCanvas();
+      const centre = m.getCenter();
+      setDiag((d) => ({
+        ...d,
+        styleLoaded: true,
+        canvas: `${c.width}x${c.height}`,
+        centre: `${centre.lng.toFixed(3)}, ${centre.lat.toFixed(3)} @z${m.getZoom().toFixed(1)}`,
+      }));
+
       // Chrome last, and non-fatally: a control that cannot measure the map
       // must never cost us the layers we just added.
       try {
@@ -298,6 +348,33 @@ export function CityMap({ zones, segments, basemap, onSelectSegment }: CityMapPr
     // Filling a positioned parent removes the question entirely.
     <Box className="absolute inset-0">
       <div ref={container} className="absolute inset-0" />
+      {!failure && diag.segmentFeatures === 0 && (
+        <Box className="absolute left-1/2 top-1/2 z-20 w-[380px] -translate-x-1/2 -translate-y-1/2 rounded-md border border-ink-700 bg-ink-900 p-4">
+          <Typography variant="overline" color="text.secondary">
+            Map diagnostics
+          </Typography>
+          <Box className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1">
+            {[
+              ['WebGL', diag.webgl],
+              ['Container', diag.container],
+              ['Canvas', diag.canvas],
+              ['Style loaded', String(diag.styleLoaded)],
+              ['Zone features', String(diag.zoneFeatures)],
+              ['Segment features', String(diag.segmentFeatures)],
+              ['Camera', diag.centre],
+            ].map(([k, v]) => (
+              <Box key={k} className="contents">
+                <Typography variant="caption" color="text.secondary">
+                  {k}
+                </Typography>
+                <Typography variant="caption" className="mono">
+                  {v}
+                </Typography>
+              </Box>
+            ))}
+          </Box>
+        </Box>
+      )}
       {failure && (
         <Box className="absolute inset-x-0 top-0 z-20 border-b border-ink-700 bg-ink-900 px-4 py-2">
           <Typography variant="overline" sx={{ color: 'var(--danger)' }}>
