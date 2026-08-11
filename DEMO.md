@@ -49,13 +49,17 @@ Use **admin** unless you are specifically demonstrating role restrictions.
 1. **Sign in.** Type a wrong password first if you want to show error handling — the screen
    switches on the error *code*, never the message.
 
-2. **Live map.** Eight Belagavi zones, 121 road segments coloured by congestion, permanent
-   legend bottom-left, KPI strip on top, temperature in the header.
+2. **Live map.** Eight Belagavi zones with labels, 121 road segments coloured by congestion,
+   permanent legend bottom-left, KPI strip on top, temperature in the header.
    - The colours shift every 3 seconds. The generator writes readings, a worker rolls them into
      `traffic_snapshots`, and the server pushes `traffic:update` over Socket.IO.
    - **Click a road** → context panel with congestion, mean speed, free-flow speed, length.
-   - **Street basemap** toggle adds OpenStreetMap underneath. Leave it **off** unless the wifi
-     is solid — everything else is drawn from our own data and needs no internet.
+     The selected road thickens.
+   - The map is **SVG**, not WebGL. It needs no graphics driver, no worker and no network, so
+     it renders in any browser including Brave with shields up. This is deliberate — see below.
+   - **Interactive map (WebGL)** toggle switches to the MapLibre renderer, which adds pan, zoom
+     and an optional OpenStreetMap basemap. Only use it if you have tested it on the demo
+     machine; it needs WebGL enabled.
 
 3. **Fleet.** 60 vehicles, two operators, eight zones. Mode dot beside each type, battery bar,
    status chip. Filter by status → server-side refetch, footer count updates. Filter to
@@ -106,6 +110,7 @@ npm run typecheck && npm run lint && npm run test
 | Symptom | Cause | Fix |
 |---|---|---|
 | Map is blank | No traffic data yet | `npm run demo:traffic` |
+| Map blank only after toggling **Interactive map (WebGL)** | Browser has WebGL disabled | Toggle it back off — the SVG map is the default for exactly this reason |
 | Map is all green | Off-peak in the diurnal curve | The `demo` script pins 18:30; if you ran `traffic:sim` bare, add `-- --hour 18.5` |
 | Map shows a red "Map error" banner | MapLibre failed | Read the banner — it names the cause |
 | `maplibre-gl-worker.mjs ... does not exist in the optimize deps directory` | Stale Vite dep cache | `rm -rf apps/web/node_modules/.vite` then restart |

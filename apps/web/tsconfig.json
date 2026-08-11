@@ -14,13 +14,15 @@
       "vite/client",
       "node"
     ],
-    "noEmit": false
+    "noEmit": false,
+    "resolveJsonModule": true
   },
   "include": [
     "src/**/*.ts",
     "src/**/*.tsx",
     "tests/**/*.ts",
-    "tests/**/*.tsx"
+    "tests/**/*.tsx",
+    "tests/**/*.json"
   ],
   "references": [
     {

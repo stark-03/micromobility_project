@@ -7,6 +7,7 @@ import type { ApiClientError } from '../../lib/api.ts';
 import { ErrorState, LoadingState } from '../../components/StateViews.tsx';
 import { FLOW_LABELS, flowRamp } from '../../lib/tokens.ts';
 import { CityMap } from './CityMap.tsx';
+import { SvgCityMap } from './SvgCityMap.tsx';
 import { LegendCard } from './LegendCard.tsx';
 
 function Metric({ label, value, tint }: { label: string; value: string; tint?: string }) {
@@ -23,8 +24,13 @@ function Metric({ label, value, tint }: { label: string; value: string; tint?: s
 }
 
 export function LiveScreen() {
-  const [basemap, setBasemap] = useState(false);
   const [selected, setSelected] = useState<SegmentTrafficDto | null>(null);
+  /**
+   * SVG is the default renderer. It needs no WebGL, no worker and no network,
+   * so it cannot fail the way a canvas map can. The MapLibre view adds pan,
+   * zoom and an optional street basemap for anyone who wants them.
+   */
+  const [renderer, setRenderer] = useState<'svg' | 'gl'>('svg');
 
   const zones = useQuery({
     queryKey: ['geo', 'zones'],
@@ -79,19 +85,32 @@ export function LiveScreen() {
         />
         <FormControlLabel
           control={
-            <Switch size="small" checked={basemap} onChange={(e) => setBasemap(e.target.checked)} />
+            <Switch
+              size="small"
+              checked={renderer === 'gl'}
+              onChange={(e) => setRenderer(e.target.checked ? 'gl' : 'svg')}
+            />
           }
-          label={<Typography variant="body2">Street basemap</Typography>}
+          label={<Typography variant="body2">Interactive map (WebGL)</Typography>}
         />
       </Box>
 
       <Box className="relative flex-1">
-        <CityMap
-          zones={zones.data!.data}
-          segments={live.segments}
-          basemap={basemap}
-          onSelectSegment={setSelected}
-        />
+        {renderer === 'svg' ? (
+          <SvgCityMap
+            zones={zones.data!.data}
+            segments={live.segments}
+            selectedId={selected?.segmentId ?? null}
+            onSelectSegment={setSelected}
+          />
+        ) : (
+          <CityMap
+            zones={zones.data!.data}
+            segments={live.segments}
+            basemap
+            onSelectSegment={setSelected}
+          />
+        )}
 
         <LegendCard />
 
