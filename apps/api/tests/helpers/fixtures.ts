@@ -4,7 +4,7 @@ import { QueryTypes } from 'sequelize';
 import { ROLES } from '@mm/shared-types';
 import type { Role, VehicleStatus, VehicleType } from '@mm/shared-types';
 import { pointLiteral, polygonLiteral } from '../../src/db/spatial.ts';
-import { ZONES, zoneBoundary } from '../../src/db/seeders/belagavi-geo.ts';
+import { ZONES } from '../../src/db/seeders/belagavi-geo.ts';
 import { Operator, Role as RoleModel, User, UserRole, Vehicle, Zone } from '../../src/db/models/index.ts';
 import { testDb } from './db.ts';
 
@@ -33,7 +33,7 @@ export async function seedReference(): Promise<ReferenceIds> {
   for (const z of ZONES) {
     await testDb.query(
       `INSERT INTO zones (code, name, boundary, centroid, population_ix)
-       VALUES (?, ?, ${polygonLiteral(zoneBoundary(z.centroid)).val as string},
+       VALUES (?, ?, ${polygonLiteral(z.boundary).val as string},
                ${pointLiteral(z.centroid).val as string}, ?)`,
       { replacements: [z.code, z.name, z.populationIx] },
     );

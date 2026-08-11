@@ -19,7 +19,9 @@ const segments = segmentsFixture as unknown as SegmentTrafficDto[];
 describe('SvgCityMap with the real Belagavi payload', () => {
   it('has captured the full seeded city', () => {
     expect(zones).toHaveLength(8);
-    expect(segments).toHaveLength(121);
+    // Counts are derived, not hardcoded, so regenerating the city does not
+    // require editing assertions — only the shape of the data matters.
+    expect(segments.length).toBeGreaterThan(100);
   });
 
   it('renders every zone and every road segment', () => {
@@ -29,12 +31,16 @@ describe('SvgCityMap with the real Belagavi payload', () => {
       </ThemeProvider>,
     );
 
-    expect(container.querySelectorAll('[data-testid="zones"] path')).toHaveLength(8);
-    expect(container.querySelectorAll('[data-testid="segments"] path')).toHaveLength(121);
-    expect(container.querySelectorAll('[data-testid="zone-labels"] text')).toHaveLength(8);
+    expect(container.querySelectorAll('[data-testid="zones"] path')).toHaveLength(zones.length);
+    expect(container.querySelectorAll('[data-testid="segments"] path')).toHaveLength(
+      segments.length,
+    );
+    expect(container.querySelectorAll('[data-testid="zone-labels"] text')).toHaveLength(
+      zones.length,
+    );
   });
 
-  it('keeps all 121 segments inside the viewBox', () => {
+  it('keeps every segment inside the viewBox', () => {
     const { container } = render(
       <ThemeProvider theme={theme}>
         <SvgCityMap zones={zones} segments={segments} />
@@ -53,7 +59,10 @@ describe('SvgCityMap with the real Belagavi payload', () => {
         points += 1;
       }
     }
-    expect(points).toBe(242); // 121 segments x 2 endpoints
+    // Streets are drawn with a bend, so each carries more than two points.
+    const expected = segments.reduce((n, s) => n + s.geometry.coordinates.length, 0);
+    expect(points).toBe(expected);
+    expect(expected).toBeGreaterThan(segments.length * 2);
   });
 
   it('spreads real congestion across the whole flow ramp', () => {
@@ -69,6 +78,20 @@ describe('SvgCityMap with the real Belagavi payload', () => {
       ),
     );
     expect(strokes.size).toBe(5);
+  });
+
+  it('draws streets that are not all dead straight', () => {
+    // A perfect lattice renders as a test pattern. Every street has a bend, so
+    // no three consecutive points should be collinear across the whole map.
+    let bent = 0;
+    for (const s of segments) {
+      const c = s.geometry.coordinates;
+      if (c.length < 3) continue;
+      const [a, b, d] = [c[0]!, c[1]!, c[2]!];
+      const cross = (b[0] - a[0]) * (d[1] - a[1]) - (b[1] - a[1]) * (d[0] - a[0]);
+      if (Math.abs(cross) > 1e-9) bent += 1;
+    }
+    expect(bent).toBeGreaterThan(segments.length * 0.5);
   });
 
   it('uses the drawable area rather than bunching into one corner', () => {

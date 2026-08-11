@@ -7,7 +7,7 @@ import type { LngLat, Role, VehicleStatus, VehicleType } from '@mm/shared-types'
 import { sequelize as defaultSequelize } from '../index.ts';
 import { ensureModels } from '../models/index.ts';
 import { lineStringLiteral, pointLiteral, polygonLiteral } from '../spatial.ts';
-import { buildSegments, pointInZone, ZONES, zoneBoundary } from './belagavi-geo.ts';
+import { buildSegments, pointInZone, ZONES } from './belagavi-geo.ts';
 import { assertConnected } from './graph.ts';
 
 export interface SeedSummary {
@@ -92,7 +92,7 @@ export async function runSeed(options: SeedOptions = {}): Promise<SeedSummary> {
 
     // ---- zones (natural key: code) ----------------------------------------
     for (const z of ZONES) {
-      const boundary = polygonLiteral(zoneBoundary(z.centroid)).val as string;
+      const boundary = polygonLiteral(z.boundary).val as string;
       const centroid = pointLiteral(z.centroid).val as string;
       await s.query(
         `INSERT INTO zones (code, name, boundary, centroid, population_ix)
