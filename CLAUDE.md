@@ -271,3 +271,24 @@ npm run db:make -- add_station_occupancy_index
 - Before finishing: `npm run typecheck && npm run lint && npm run test` must pass. If a test is
   failing for a reason unrelated to your change, say so rather than skipping it.
 - Prefer reading the existing module next door over inventing a new pattern.
+
+---
+
+## Sprint 3 note — Python environment
+
+The ML service (`apps/ml`) will use **conda**, not `venv`, on this machine. The rule that
+matters is unchanged: **never install into the base/system Python.** Create and activate a
+dedicated environment first.
+
+```bash
+conda create -n micromobility python=3.12 -y
+conda activate micromobility
+pip install -r apps/ml/requirements.txt
+```
+
+Python **3.12**, not 3.13, is the safer choice under conda: conda-forge builds for the ML stack
+lag a release behind, and 3.12 avoids the missing-wheel/source-build problem `CLAUDE.md`
+warns about above. Nothing in the service depends on a 3.13-only feature.
+
+Record the exact interpreter version in the README once the environment exists, and pin
+`requirements.txt` with hashes as the original guidance says.
