@@ -154,32 +154,63 @@ export interface SegmentSeed {
   zoneCode: string;
 }
 
-const COLS = 11;
-const ROWS = 7;
+/**
+ * Belagavi is radial-concentric, like most Indian cities that grew outward from
+ * a market centre: arterials radiate from the middle, ring roads cross them,
+ * and local streets fill the sectors between.
+ *
+ * The first two attempts generated a lattice — then a jittered lattice — and
+ * both read as a warped fishing net. Wobble does not help, because the problem
+ * was topological, not cosmetic: a mesh has uniform degree-4 junctions
+ * everywhere, and no city does.
+ *
+ * This builds the hierarchy explicitly:
+ *   - one centre
+ *   - SPOKES radial arterials running out from it
+ *   - RING_RADII concentric ring roads crossing them, irregular rather than
+ *     circular
+ *   - short local streets filling sectors, denser near the middle
+ *
+ * Connectivity is structural: every radial touches the centre, every ring
+ * touches every radial, and every local street attaches to nodes that already
+ * exist. assertConnected proves it before anything is written.
+ */
 
-/** How far a junction may wander from its lattice position, as a cell fraction. */
-const JITTER = 0.38;
+const CENTRE: LngLat = [
+  (CITY_BBOX.minLng + CITY_BBOX.maxLng) / 2,
+  (CITY_BBOX.minLat + CITY_BBOX.maxLat) / 2,
+];
 
-function nodeName(row: number, col: number): string {
-  return `N-${row}-${col}`;
+const SPOKES = 12;
+/** Ring radii as a fraction of the city's half-height. */
+const RING_RADII = [0.22, 0.42, 0.63, 0.86];
+
+/** Degrees of latitude for one unit of radius. */
+const R_LAT = (CITY_H / 2) * 1.02;
+/**
+ * Longitude is compressed by cos(latitude) on the ground, so a ring drawn with
+ * equal degree offsets would render as an ellipse. Dividing by cos here means
+ * the rings come out round once projected.
+ */
+const R_LNG = R_LAT / Math.cos((CENTRE[1] * Math.PI) / 180);
+
+function ringNode(ring: number, spoke: number): LngLat {
+  const theta = (spoke / SPOKES) * Math.PI * 2 + (hash2(ring + 11, spoke + 3) - 0.5) * 0.14;
+  // Rings wobble in and out so they read as roads that grew, not as circles.
+  const wobble = 1 + (hash2(spoke + 61, ring + 17) - 0.5) * 0.24;
+  const r = RING_RADII[ring]! * wobble;
+  return [
+    Number((CENTRE[0] + Math.cos(theta) * r * R_LNG).toFixed(6)),
+    Number((CENTRE[1] + Math.sin(theta) * r * R_LAT).toFixed(6)),
+  ];
 }
 
-function nodePos(row: number, col: number): LngLat {
-  const cellW = CITY_W / (COLS - 1);
-  const cellH = CITY_H / (ROWS - 1);
+function nodeName(ring: number, spoke: number): string {
+  return ring < 0 ? 'N-CENTRE' : `N-R${ring}-S${((spoke % SPOKES) + SPOKES) % SPOKES}`;
+}
 
-  const baseLng = CITY_BBOX.minLng + cellW * col;
-  const baseLat = CITY_BBOX.minLat + cellH * row;
-
-  // Edge junctions stay put, so the city keeps a clean outline instead of a
-  // ragged fringe.
-  const onEdge = row === 0 || col === 0 || row === ROWS - 1 || col === COLS - 1;
-  const amount = onEdge ? JITTER * 0.25 : JITTER;
-
-  const dLng = (hash2(row, col) - 0.5) * cellW * amount;
-  const dLat = (hash2(col + 977, row + 331) - 0.5) * cellH * amount;
-
-  return [Number((baseLng + dLng).toFixed(6)), Number((baseLat + dLat).toFixed(6))];
+function nodePos(ring: number, spoke: number): LngLat {
+  return ring < 0 ? CENTRE : ringNode(ring, spoke);
 }
 
 const R_EARTH_M = 6_371_000;
@@ -215,103 +246,116 @@ function zoneCodeFor(p: LngLat): string {
   return best.code;
 }
 
-const STREET_NAMES = [
-  'Khanapur Road',
-  'College Road',
-  'Congress Road',
-  'RPD Cross',
-  'Ramdev Galli',
-  'Kirloskar Road',
-  'Mahantesh Nagar Link',
-  'Ashok Nagar Road',
-  'Auto Nagar Road',
-  'Goa Road',
-  'Club Road',
-  'Shivaji Road',
+const RADIAL_NAMES = [
+  'Khanapur Road', 'Pune-Bengaluru Bypass', 'Goa Road', 'Ramdurg Road',
+  'Bauxite Road', 'Old PB Road', 'Vengurla Road', 'Mudalgi Road',
+  'Hindwadi Main', 'Angol Main', 'Kanbargi Road', 'Auto Nagar Road',
+];
+const RING_NAMES = ['Inner Ring', 'Fort Ring', 'Outer Ring', 'Bypass Ring'];
+const LOCAL_NAMES = [
+  'Ramdev Galli', 'Kirloskar Road', 'College Road', 'Congress Road', 'RPD Cross',
+  'Club Road', 'Shivaji Road', 'Market Lane', 'Station Cross', 'Tilak Galli',
 ];
 
-/**
- * Every horizontal and vertical neighbour pair becomes a street, plus a small
- * number of SHORT diagonal links between adjacent junctions.
- *
- * The earlier version drew diagonals between distant lattice points, which
- * rendered as long straight slashes across the whole city — the single most
- * artificial thing on the map. Diagonals now span one cell only, like a real
- * cut-through.
- *
- * The full lattice is connected by construction; assertConnected proves it
- * rather than assuming it.
- */
 export function buildSegments(): SegmentSeed[] {
   const segments: SegmentSeed[] = [];
   let i = 0;
 
-  const push = (r1: number, c1: number, r2: number, c2: number, cls: RoadClass): void => {
-    const a = nodePos(r1, c1);
-    const b = nodePos(r2, c2);
-    const mid: LngLat = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+  const push = (
+    from: { ring: number; spoke: number },
+    to: { ring: number; spoke: number },
+    cls: RoadClass,
+    name: string,
+  ): void => {
+    const a = nodePos(from.ring, from.spoke);
+    const b = nodePos(to.ring, to.spoke);
+    if (a[0] === b[0] && a[1] === b[1]) return;
     i += 1;
 
-    // A slight bend at the midpoint. Two-point streets read as ruler-drawn;
-    // three points is enough to suggest a road that follows terrain.
-    const bendLng = (hash2(i, 7919) - 0.5) * (b[0] - a[0] === 0 ? CITY_W / COLS : 0) * 0.22;
-    const bendLat = (hash2(7919, i) - 0.5) * (b[1] - a[1] === 0 ? CITY_H / ROWS : 0) * 0.22;
+    // Ring roads curve around the centre; radials and locals take a slight
+    // lateral bend. Either way, no street is a ruled line.
+    const mid: LngLat = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+    const dx = b[0] - a[0];
+    const dy = b[1] - a[1];
+    const len = Math.hypot(dx, dy) || 1;
+    const bowAmount = (hash2(i, 4441) - 0.5) * 0.28;
     const bend: LngLat = [
-      Number((mid[0] + bendLng).toFixed(6)),
-      Number((mid[1] + bendLat).toFixed(6)),
+      Number((mid[0] + (-dy / len) * len * bowAmount).toFixed(6)),
+      Number((mid[1] + (dx / len) * len * bowAmount).toFixed(6)),
     ];
 
     const geometry: LngLat[] = [a, bend, b];
-    const lengthM = haversineM(a, bend) + haversineM(bend, b);
-
     segments.push({
       externalRef: `SEG-${String(i).padStart(4, '0')}`,
-      name: `${STREET_NAMES[i % STREET_NAMES.length]!} ${r1}-${c1}`,
-      fromNode: nodeName(r1, c1),
-      toNode: nodeName(r2, c2),
+      name,
+      fromNode: nodeName(from.ring, from.spoke),
+      toNode: nodeName(to.ring, to.spoke),
       geometry,
-      lengthM: Number(lengthM.toFixed(2)),
+      lengthM: Number((haversineM(a, bend) + haversineM(bend, b)).toFixed(2)),
       speedFreeKph: SPEED_BY_CLASS[cls],
-      lanes: (i % 3) + 1,
-      oneWay: i % 7 === 0,
+      lanes: cls === 'arterial' ? 3 : cls === 'collector' ? 2 : 1,
+      oneWay: i % 11 === 0,
       gradientPct: Number((((i % 11) - 5) * 0.4).toFixed(2)),
       roadClass: cls,
-      hasBikeLane: i % 4 === 0,
-      lit: i % 9 !== 0,
+      hasBikeLane: cls === 'cycleway' || i % 5 === 0,
+      lit: i % 13 !== 0,
       zoneCode: zoneCodeFor(mid),
     });
   };
 
-  // Arterials run along a few whole rows and columns, the way a real city has
-  // a handful of through-routes rather than uniformly important streets.
-  const arterialRows = new Set([1, 4]);
-  const arterialCols = new Set([2, 7]);
-
-  const classForH = (r: number, c: number): RoadClass => {
-    if (arterialRows.has(r)) return 'arterial';
-    if ((r + c) % 9 === 0) return 'cycleway';
-    if ((r + c) % 5 === 0) return 'collector';
-    return 'local';
-  };
-  const classForV = (r: number, c: number): RoadClass => {
-    if (arterialCols.has(c)) return 'arterial';
-    if ((r + c) % 8 === 0) return 'path';
-    if ((r + c) % 5 === 0) return 'collector';
-    return 'local';
-  };
-
-  // Horizontal: ROWS * (COLS - 1) = 7 * 10 = 70
-  for (let r = 0; r < ROWS; r++) {
-    for (let c = 0; c < COLS - 1; c++) push(r, c, r, c + 1, classForH(r, c));
+  // Radial arterials: centre outward through every ring.
+  for (let s = 0; s < SPOKES; s++) {
+    const name = RADIAL_NAMES[s % RADIAL_NAMES.length]!;
+    push({ ring: -1, spoke: s }, { ring: 0, spoke: s }, 'arterial', name);
+    for (let r = 0; r < RING_RADII.length - 1; r++) {
+      // Not every radial reaches the edge — some peter out, as they do in life.
+      if (r >= 2 && hash2(s + 91, r + 7) > 0.78) break;
+      // Radials thin out as they leave the centre, like real through-routes.
+      push(
+        { ring: r, spoke: s },
+        { ring: r + 1, spoke: s },
+        r === 0 ? 'arterial' : r === 1 ? 'collector' : 'local',
+        name,
+      );
+    }
   }
-  // Vertical: (ROWS - 1) * COLS = 6 * 11 = 66
-  for (let r = 0; r < ROWS - 1; r++) {
-    for (let c = 0; c < COLS; c++) push(r, c, r + 1, c, classForV(r, c));
+
+  // Ring roads: each closes a loop around the centre.
+  for (let r = 0; r < RING_RADII.length; r++) {
+    const name = RING_NAMES[r % RING_NAMES.length]!;
+    // Only the outer bypass and one mid ring carry arterial traffic. Making
+    // every ring an arterial put 45% of the network at the highest congestion
+    // sensitivity, which rendered the whole city orange.
+    const cls: RoadClass =
+      r === RING_RADII.length - 1 ? 'arterial' : r === 2 ? 'arterial' : 'collector';
+    for (let s = 0; s < SPOKES; s++) {
+      push({ ring: r, spoke: s }, { ring: r, spoke: s + 1 }, cls, name);
+    }
   }
-  // Short cut-throughs, one cell each, scattered deterministically.
-  for (let r = 0; r < ROWS - 1; r++) {
-    for (let c = 0; c < COLS - 1; c++) {
-      if (hash2(r * 31 + 5, c * 17 + 3) > 0.87) push(r, c, r + 1, c + 1, 'cycleway');
+
+  // Local streets: diagonal cut-throughs inside sectors, denser near the middle
+  // where a real city is densest.
+  for (let r = 0; r < RING_RADII.length - 1; r++) {
+    // Denser local fabric: local streets are the majority of any real network,
+    // and they are what give the congestion map its range of colour.
+    const density = 0.95 - r * 0.08;
+    for (let s = 0; s < SPOKES; s++) {
+      if (hash2(r * 53 + 9, s * 29 + 4) < density) {
+        push(
+          { ring: r, spoke: s },
+          { ring: r + 1, spoke: s + 1 },
+          hash2(s, r) > 0.62 ? 'cycleway' : 'local',
+          LOCAL_NAMES[(r * SPOKES + s) % LOCAL_NAMES.length]!,
+        );
+      }
+      if (hash2(r * 71 + 13, s * 37 + 6) < density * 0.9) {
+        push(
+          { ring: r + 1, spoke: s },
+          { ring: r, spoke: s + 1 },
+          hash2(r, s) > 0.85 ? 'path' : 'local',
+          LOCAL_NAMES[(r * SPOKES + s + 5) % LOCAL_NAMES.length]!,
+        );
+      }
     }
   }
 
