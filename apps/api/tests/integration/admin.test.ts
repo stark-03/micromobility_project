@@ -171,12 +171,15 @@ describe('API keys', () => {
 
     expect(created.status).toBe(201);
     const raw = created.body.data.key as string;
-    expect(raw).toMatch(/^mm_[A-Za-z0-9_-]{8}_[A-Za-z0-9_-]+$/);
+    // Hex prefix, so the underscore delimiter is never ambiguous.
+    expect(raw).toMatch(/^mm_[0-9a-f]{8}_[A-Za-z0-9_-]+$/);
 
     const list = await request(app).get('/api/v1/admin/api-keys').set(...admin.auth);
     expect(JSON.stringify(list.body)).not.toContain(raw);
-    // Only the prefix remains readable.
+    // Only the prefix remains readable, and it round-trips through a split
+    // on the delimiter — which is exactly what a hex prefix guarantees.
     expect(list.body.data[0].keyPrefix).toBe(raw.split('_')[1]);
+    expect(list.body.data[0].keyPrefix).toHaveLength(8);
     expect(list.body.data[0].key).toBeUndefined();
   });
 

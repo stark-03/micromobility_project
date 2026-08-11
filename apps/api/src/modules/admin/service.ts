@@ -93,9 +93,17 @@ export interface GeneratedApiKey {
   hash: string;
 }
 
-/** `mm_<8-char prefix>_<43-char secret>`. */
+/**
+ * `mm_<8 hex chars>_<43-char base64url secret>`.
+ *
+ * The prefix is HEX, deliberately. base64url's alphabet includes `_`, so a
+ * base64url prefix made the underscore delimiter ambiguous — any consumer
+ * splitting on `_` to recover the prefix got a truncated value whenever the
+ * random prefix happened to contain one. Hex has no delimiter collision, so
+ * `raw.split('_')[1]` is always exactly the prefix.
+ */
 export function generateApiKey(): GeneratedApiKey {
-  const prefix = crypto.randomBytes(6).toString('base64url').slice(0, 8);
+  const prefix = crypto.randomBytes(4).toString('hex'); // 8 chars, [0-9a-f]
   const secret = crypto.randomBytes(32).toString('base64url');
   const raw = `mm_${prefix}_${secret}`;
   return { raw, prefix, hash: hashApiKey(raw) };

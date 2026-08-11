@@ -8,6 +8,8 @@ import { initRefreshToken, RefreshToken } from './refresh-token.ts';
 import { initRoadSegment, RoadSegment } from './road-segment.ts';
 import { initRole, Role } from './role.ts';
 import { initSavedPlace, SavedPlace } from './saved-place.ts';
+import { initTrafficReading, TrafficReading } from './traffic-reading.ts';
+import { initTrafficSnapshot, TrafficSnapshot } from './traffic-snapshot.ts';
 import { initTrip, Trip } from './trip.ts';
 import { initUser, User } from './user.ts';
 import { initUserPreference, UserPreference } from './user-preference.ts';
@@ -15,6 +17,8 @@ import { initUserRole, UserRole } from './user-role.ts';
 import { initVehicle, Vehicle } from './vehicle.ts';
 import { initVehicleStatusHistory, VehicleStatusHistory } from './vehicle-status-history.ts';
 import { initVehicleTelemetry, VehicleTelemetry } from './vehicle-telemetry.ts';
+import { initWeatherForecast, WeatherForecast } from './weather-forecast.ts';
+import { initWeatherReading, WeatherReading } from './weather-reading.ts';
 import { initZone, Zone } from './zone.ts';
 
 let initialised = false;
@@ -37,6 +41,10 @@ export function initModels(s: Sequelize) {
   initVehicleTelemetry(s);
   initMaintenanceTicket(s);
   initTrip(s);
+  initTrafficReading(s);
+  initTrafficSnapshot(s);
+  initWeatherReading(s);
+  initWeatherForecast(s);
 
   // ---- associations --------------------------------------------------------
 
@@ -93,11 +101,20 @@ export function initModels(s: Sequelize) {
   User.hasMany(Trip, { foreignKey: 'user_id', as: 'trips' });
   Trip.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 
-  // NOTE: VehicleTelemetry gets NO association to Vehicle on purpose. The table
-  // is RANGE-partitioned and MySQL forbids foreign keys on partitioned tables,
-  // so there is no constraint for an association to lean on. Joins would also
-  // encourage un-bounded scans of a table that must always be queried by
-  // vehicle_id + time range. Do not "fix" this.
+  RoadSegment.hasOne(TrafficSnapshot, { foreignKey: 'segment_id', as: 'snapshot' });
+  TrafficSnapshot.belongsTo(RoadSegment, { foreignKey: 'segment_id', as: 'segment' });
+  TrafficSnapshot.belongsTo(Zone, { foreignKey: 'zone_id', as: 'zone' });
+
+  Zone.hasMany(WeatherReading, { foreignKey: 'zone_id', as: 'weather' });
+  WeatherReading.belongsTo(Zone, { foreignKey: 'zone_id', as: 'zone' });
+  Zone.hasMany(WeatherForecast, { foreignKey: 'zone_id', as: 'forecasts' });
+  WeatherForecast.belongsTo(Zone, { foreignKey: 'zone_id', as: 'zone' });
+
+  // NOTE: TrafficReading, like VehicleTelemetry, gets NO association to Vehicle on purpose. The table
+  // to RoadSegment/Vehicle. Both tables are RANGE-partitioned and MySQL forbids
+  // foreign keys on partitioned tables, so there is no constraint for an
+  // association to lean on. Joins would also encourage un-bounded scans of
+  // tables that must always be queried within a time range. Do not "fix" this.
 
   initialised = true;
   return models;
@@ -120,6 +137,10 @@ export const models = {
   VehicleTelemetry,
   MaintenanceTicket,
   Trip,
+  TrafficReading,
+  TrafficSnapshot,
+  WeatherReading,
+  WeatherForecast,
 };
 
 /** Idempotent: safe to call from any entrypoint (server, CLI, tests). */
@@ -141,8 +162,12 @@ export {
   User,
   UserPreference,
   UserRole,
+  TrafficReading,
+  TrafficSnapshot,
   Vehicle,
   VehicleStatusHistory,
   VehicleTelemetry,
+  WeatherForecast,
+  WeatherReading,
   Zone,
 };

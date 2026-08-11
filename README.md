@@ -14,19 +14,24 @@ Dept. of CSE, AITM, Belagavi.
 
 ## What is built so far
 
-**Sprint 1** — foundation, authentication and the vehicle registry.
+**Sprint 1** — foundation, authentication, vehicle registry.
+**Sprint 2** — traffic monitoring, weather, live map, basic KPIs.
 
 | Included | Not yet |
 |---|---|
-| npm-workspaces monorepo (`apps/web`, `apps/api`, `packages/shared-types`) | Traffic ingest, live map (Sprint 2) |
-| 16-table MySQL schema with umzug migrations | Weather monitoring (Sprint 2) |
-| Idempotent synthetic Belagavi seed | Route planning, A\* (Sprint 3) |
-| M01 User & Access Management | ML service, demand model (Sprint 3) |
-| M03 Vehicle Management + status state machine | Simulation engine (Sprint 4) |
-| Cache / job-runner / event-bus adapter shells | Fleet optimization, analytics (Sprint 5) |
-| Sign-in and Fleet screens | Payments, GBFS, emergency response (Sprint 6) |
+| npm-workspaces monorepo (`apps/web`, `apps/api`, `packages/shared-types`) | Route planning, A\* (Sprint 3) |
+| 20-table MySQL schema with umzug migrations | ML service, demand model (Sprint 3) |
+| Idempotent synthetic Belagavi seed | Simulation engine (Sprint 4) |
+| M01 User & Access Management | Fleet optimization, parking, safety (Sprint 5) |
+| M03 Vehicle Management + status state machine | Payments, GBFS, emergency response (Sprint 6) |
+| M02 Traffic Monitoring + synthetic generator | |
+| M12 Weather Monitoring | |
+| M11 basic KPIs | |
+| Socket.IO gateway with room authorization | |
+| Cache / job-runner / event-bus adapter shells | |
+| Sign-in, **Live map** and Fleet screens | |
 
-The icon rail shows all six destinations; the five not yet built are disabled and say which
+The icon rail shows all six destinations; the four not yet built are disabled and say which
 sprint they arrive in.
 
 ---
@@ -152,10 +157,18 @@ From a cold laptop:
 # 1. MySQL must be running
 systemctl is-active mysqld        # or: mysql.server start
 
-# 2. One terminal, both services
+# 2. Terminal one — both services
 cd "<project root>"
 npm run dev                       # api :4000, web :5173
+
+# 3. Terminal two — makes the live map move
+npm run traffic:sim -- --hour 18.5 --interval 3000
 ```
+
+`--hour 18.5` pins the simulation to evening rush. Without it the generator follows the real
+clock, so a demo at 11am or 11pm shows a uniformly free-flowing city and demonstrates nothing.
+The generator is fully deterministic — no `Math.random` anywhere — so the same demo replays
+identically.
 
 Then, in the browser:
 
@@ -163,16 +176,24 @@ Then, in the browser:
 2. Sign in as `admin@belagavi.local` with the password `db:seed` printed.
    A wrong password shows *"That email and password don't match."* — the screen
    switches on the error **code**, never the message.
-3. You land on **Fleet**: 60 vehicles across two operators and eight Belagavi zones.
+3. You land on **Live** — the map. Eight zone polygons, ~121 road segments coloured by
+   congestion, and a permanent legend card bottom-left. Watch the colours shift every few
+   seconds as the generator ticks and the socket pushes an update.
+   - Click any road for its congestion, mean speed and free-flow speed.
+   - Toggle **Street basemap** to drop an OpenStreetMap layer underneath. Leave it off if the
+     network is unreliable — everything else is drawn from our own seeded data and needs no
+     internet at all.
+   - The header shows city temperature from the weather poller.
+4. Click **Fleet** in the rail: 60 vehicles across two operators and eight Belagavi zones.
    - The coloured dot is the vehicle mode, always beside its label.
    - Battery is monospaced with tabular figures, tinted green / amber / red.
    - Status is a chip; the congestion ramp is deliberately *not* used here.
-4. Change the **Status** filter to `charging` — the grid refetches server-side and
+5. Change the **Status** filter to `charging` — the grid refetches server-side and
    the row count in the footer updates.
-5. Set it to `retired` — the empty state appears and tells you what to do next,
+6. Set it to `retired` — the empty state appears and tells you what to do next,
    with a **Clear filters** button.
-6. Hover any of the five dimmed rail icons — each says which sprint it arrives in.
-7. **Sign out** → back to `/signin`. Reload the page: you stay signed out, because
+7. Hover any of the four dimmed rail icons — each says which sprint it arrives in.
+8. **Sign out** → back to `/signin`. Reload the page: you stay signed out, because
    the access token only ever lived in memory.
 
 To show the API directly:
@@ -184,8 +205,31 @@ TOKEN=$(curl -s -X POST localhost:4000/api/v1/auth/login \
   | python3 -c "import sys,json;print(json.load(sys.stdin)['data']['accessToken'])")
 
 curl -s "localhost:4000/api/v1/vehicles?limit=2" -H "Authorization: Bearer $TOKEN"
+curl -s "localhost:4000/api/v1/traffic/live"      -H "Authorization: Bearer $TOKEN"
+curl -s "localhost:4000/api/v1/analytics/kpis"    -H "Authorization: Bearer $TOKEN"
+curl -s "localhost:4000/api/v1/weather/current"   -H "Authorization: Bearer $TOKEN"
 curl -s localhost:4000/readyz
 ```
+
+---
+
+## Scheduled work
+
+`node-cron` runs inside the API process — there is no external scheduler, because this is a
+single-process deployment by design.
+
+| Job | Schedule | What it does |
+|---|---|---|
+| Traffic snapshot | every minute | Rolls the last 2 minutes of `traffic_readings` into `traffic_snapshots` |
+| Weather poll | every 15 minutes | One reading per zone |
+| Partition maintenance | 02:15 on the 1st | Keeps 3 months of partitions provisioned ahead |
+
+Partition maintenance also runs on boot: a laptop switched off across a month boundary would
+otherwise write everything into the `pmax` catch-all until the 1st.
+
+Every job is wrapped so a failure logs and the schedule survives — a cron job that kills the API
+at 02:00 is worse than one that skips a run. Jobs do not start under `NODE_ENV=test`, where a
+cron firing mid-test would fight the truncate-and-reseed harness.
 
 ---
 

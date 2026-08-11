@@ -15,4 +15,13 @@ export interface CacheKeySpec {
 export const CACHE_KEYS = {
   /** A page of the vehicle list, keyed by a hash of its filter params. */
   vehicleList: (hash: string): CacheKeySpec => ({ key: `vehicles:list:${hash}`, ttl: 15 }),
+  /** Live traffic for a zone, or 'city' for the whole graph. 15 s per CLAUDE.md. */
+  trafficSnapshot: (zoneId: string): CacheKeySpec => ({
+    key: `traffic:snapshot:${zoneId}`,
+    ttl: 15,
+  }),
+  /** Current weather per zone. Polled every 15 min, so a 60 s TTL is generous. */
+  weatherCurrent: (zoneId: string): CacheKeySpec => ({ key: `weather:current:${zoneId}`, ttl: 60 }),
+  /** KPI strip. Cheap to recompute, but recomputed on every dashboard load. */
+  kpis: (day: string): CacheKeySpec => ({ key: `kpi:city:${day}`, ttl: 30 }),
 } as const;

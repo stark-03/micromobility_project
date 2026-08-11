@@ -14,6 +14,8 @@ import type { VehicleStatus } from '@mm/shared-types';
  */
 export interface BusEvents {
   'vehicle:created': { vehicleId: string; operatorId: string; at: string };
+  'traffic:update': { segmentsUpdated: number; cityCongestionIndex: number; at: string };
+  'weather:update': { zoneId: string; at: string };
   'vehicle:status': {
     vehicleId: string;
     from: VehicleStatus;
