@@ -49,12 +49,14 @@ Use **admin** unless you are specifically demonstrating role restrictions.
 1. **Sign in.** Type a wrong password first if you want to show error handling — the screen
    switches on the error *code*, never the message.
 
-2. **Live map.** Eight Belagavi zones with labels, 121 road segments coloured by congestion,
+2. **Live map.** Eight Belagavi zones with labels, ~152 road segments coloured by congestion,
    permanent legend bottom-left, KPI strip on top, temperature in the header.
    - The colours shift every 3 seconds. The generator writes readings, a worker rolls them into
      `traffic_snapshots`, and the server pushes `traffic:update` over Socket.IO.
    - **Click a road** → context panel with congestion, mean speed, free-flow speed, length.
      The selected road thickens.
+   - The network is **radial-concentric** — a centre, twelve radial arterials, four ring roads,
+     and local streets filling the sectors — because that is how Belagavi actually grew.
    - The map is **SVG**, not WebGL. It needs no graphics driver, no worker and no network, so
      it renders in any browser including Brave with shields up. This is deliberate — see below.
    - **Interactive map (WebGL)** toggle switches to the MapLibre renderer, which adds pan, zoom
@@ -101,7 +103,7 @@ curl -s localhost:4000/readyz
 npm run typecheck && npm run lint && npm run test
 ```
 
-243 tests — 235 API, 8 frontend.
+258 tests — 235 API, 23 frontend.
 
 ---
 
