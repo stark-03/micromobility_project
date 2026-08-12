@@ -80,3 +80,65 @@ Weights are data, not code — a fourth profile is a dict entry.
 - **`safety_score` is provisional.** M09 owns the real thing; until then Express
   derives it from lighting, bike lanes, road class, speed and lane count. A
   constant score made `safest` mathematically identical to `fastest`.
+
+
+---
+
+## M05 demand model
+
+LightGBM, Poisson objective, forecasting trips per zone per 15-minute slot.
+
+```bash
+npm run demand:backfill          # six weeks of synthetic ridership
+npm run dev:ml                   # the service must be up
+curl -X POST localhost:4000/api/v1/predictions/train  -H "Authorization: Bearer $TOKEN"
+curl     localhost:4000/api/v1/predictions/demand     -H "Authorization: Bearer $TOKEN"
+curl     localhost:4000/api/v1/predictions/models     -H "Authorization: Bearer $TOKEN"
+```
+
+Current result on six weeks of history:
+
+| | |
+|---|---|
+| MAE | **0.239** |
+| Seasonal-naive baseline MAE | 0.601 |
+| Skill ratio | **0.397** (design.md §4 target ≤ 0.70) |
+| RMSE / MAPE | 0.410 / 10.8% |
+| Train / validate rows | 20,912 / 5,376 |
+
+### Things worth knowing
+
+- **The split is chronological and enforced.** `assert_chronological_split`
+  refuses a split whose validation window starts at or before the last training
+  timestamp. A random split on a time series lets the model see Tuesday evening
+  while predicting Tuesday morning; the metrics look excellent and mean nothing.
+- **Features are built in one place.** `app/features.py` is shared by training
+  and inference, because two builders drift and the drift is silent — the model
+  keeps returning numbers, just wrong ones.
+- **Lags never cross zone boundaries.** Rows are interleaved by time, so a
+  global `shift()` would pull the previous *zone's* value into this zone's lag.
+- **Rolling means exclude the current value**, or the target leaks into its own
+  feature.
+- **Hour is cyclically encoded.** 23:45 and 00:00 are adjacent in time; a raw
+  integer hour puts them 23 apart.
+- **A model that misses its target is registered but left inactive.** design.md
+  §4: no recorded eval, no `is_active` flag. The first fit scored 0.783 and was
+  correctly stored inactive.
+
+### A finding about the target
+
+The first version of the backfill gave each slot **independent** noise. Under
+that generator the best achievable skill ratio is exactly
+
+```
+E|U − 1| / E|U₁ − U₂|  =  0.225 / 0.300  =  0.75
+```
+
+so design.md's 0.70 target was unreachable no matter how good the model was —
+and the observed 0.783 was already within 4% of the floor. Tuning could not
+have closed that gap.
+
+The generator was wrong, not the target. Real ridership has **momentum**: a busy
+afternoon stays busy. The backfill now uses smooth autocorrelated noise, which
+is both more realistic and gives the recent-lag features something the
+seasonal-naive baseline cannot exploit. The skill ratio went 0.783 → 0.397.

@@ -12,6 +12,13 @@ import { registerJob, registeredJobNames } from './runner.ts';
 export function registerJobs(): void {
   if (registeredJobNames().length > 0) return;
 
+  // M05: training is a job, never a request handler. Six weeks of history is
+  // far more than an HTTP timeout allows.
+  registerJob('train-demand', async () => {
+    const { trainDemandModel } = await import('../modules/predictions/service.ts');
+    await trainDemandModel();
+  });
+
   registerJob('echo', async (payload) => {
     const { outFile, value } = payload as { outFile?: string; value?: unknown };
     if (outFile) await fs.writeFile(outFile, JSON.stringify({ value }), 'utf8');

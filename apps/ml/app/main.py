@@ -10,6 +10,13 @@ from pydantic import BaseModel, Field
 
 from .config import ML_INTERNAL_SECRET, SERVICE_NAME, SERVICE_VERSION
 from .routing.astar import NoRouteError, plan_route
+from .models.demand import (
+    has_model,
+    model_version,
+    predict_demand,
+    train_demand_model,
+    training_result_dict,
+)
 from .routing.costs import PROFILES
 
 app = FastAPI(title=SERVICE_NAME, version=SERVICE_VERSION)
@@ -126,3 +133,63 @@ def routing_compare(
     if not routes:
         raise HTTPException(status_code=422, detail="No route exists between those points")
     return {"routes": routes}
+
+
+# ---- M05 demand prediction --------------------------------------------------
+
+
+class HistoryRow(BaseModel):
+    zone_id: str
+    slot_start: str
+    trips: float
+    population_ix: float = 6.0
+    precipitation_mm: float = 0.0
+    temp_c: float = 25.0
+
+
+class TrainRequest(BaseModel):
+    history: list[HistoryRow]
+    valid_days: int = Field(default=7, ge=1, le=30)
+
+
+class PredictRequest(BaseModel):
+    history: list[HistoryRow]
+    horizon_slots: int = Field(default=4, ge=1, le=96)
+
+
+@app.post("/internal/ml/train")
+def ml_train(body: TrainRequest, x_internal_secret: str | None = Header(default=None)) -> dict:
+    """Fit the demand model.
+
+    Training is always a job, never a request handler (CLAUDE.md) — Express
+    calls this from its job runner, not from a user-facing route.
+    """
+    require_secret(x_internal_secret)
+    try:
+        result = train_demand_model(
+            [h.model_dump() for h in body.history], valid_days=body.valid_days
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return training_result_dict(result)
+
+
+@app.post("/internal/ml/predict/demand")
+def ml_predict_demand(
+    body: PredictRequest, x_internal_secret: str | None = Header(default=None)
+) -> dict:
+    require_secret(x_internal_secret)
+    if not has_model():
+        raise HTTPException(status_code=409, detail="No trained model. Train first.")
+    return {
+        "modelVersion": model_version(),
+        "forecasts": predict_demand(
+            [h.model_dump() for h in body.history], horizon_slots=body.horizon_slots
+        ),
+    }
+
+
+@app.get("/internal/ml/models")
+def ml_models(x_internal_secret: str | None = Header(default=None)) -> dict:
+    require_secret(x_internal_secret)
+    return {"loaded": has_model(), "version": model_version()}
