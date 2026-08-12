@@ -294,6 +294,43 @@ export function flowBandFor(index: number): 0 | 1 | 2 | 3 | 4 {
   return 4;
 }
 
+// ---- M04 route planning -----------------------------------------------------
+
+export const ROUTE_PROFILES = ['fastest', 'safest', 'greenest'] as const;
+export type RouteProfile = (typeof ROUTE_PROFILES)[number];
+
+export interface RouteStepDto {
+  segmentId: string;
+  name: string | null;
+  roadClass: RoadClass;
+  lengthM: number;
+  durationS: number;
+  congestionIndex: number;
+}
+
+export interface RouteDto {
+  profile: RouteProfile;
+  mode: VehicleType;
+  geometry: GeoLineString;
+  distanceM: number;
+  durationS: number;
+  etaMinutes: number;
+  elevationGainM: number;
+  energyWh: number;
+  /** 0-100, higher is riskier. */
+  riskScore: number;
+  meanCongestion: number;
+  steps: RouteStepDto[];
+  nodeCount: number;
+  snappedOrigin: LngLat | null;
+  snappedDestination: LngLat | null;
+  snapDistanceM: number;
+}
+
+export interface RouteCompareDto {
+  routes: RouteDto[];
+}
+
 export interface AuthResponseDto {
   accessToken: string;
   user: UserDto;

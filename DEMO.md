@@ -21,8 +21,12 @@ fix for anything it finds. Run it once the night before and once again just befo
 npm run demo
 ```
 
-One command, three processes: API on **:4000**, web on **:5173**, and the synthetic traffic
-generator ticking every 3 seconds pinned to evening rush.
+One command, four processes: API on **:4000**, web on **:5173**, the ML routing service on
+**:8000**, and the synthetic traffic generator ticking every 3 seconds pinned to evening rush.
+
+The ML service runs in the `micromobility` conda environment (Python 3.12). If it fails to
+start, everything except **Plan** still works — `/readyz` will say `ml: down` and the other
+screens are unaffected.
 
 > If port 5173 is taken, Vite will pick 5174 and say so — read the URL it prints.
 
@@ -67,10 +71,22 @@ Use **admin** unless you are specifically demonstrating role restrictions.
    status chip. Filter by status → server-side refetch, footer count updates. Filter to
    `retired` → empty state that tells you what to do, with a Clear filters button.
 
-4. **The rail.** Four dimmed icons, each with a tooltip naming the sprint it arrives in. Say
+4. **Plan.** Pick a start and end zone, pick a mode, compare. Three routes are planned
+   independently by A\* over the live road graph, with current congestion folded into every
+   edge cost.
+   - The three profiles weight time, safety and energy differently, and the cards show what
+     each choice costs: `fastest` is quickest but climbs more and carries more risk; `safest`
+     trades minutes for a lower risk score; `greenest` finds the route with least climbing.
+   - Green figures mark the winner on each measure; the others show how far behind they are.
+   - Each card lists its turn-by-turn roads, dotted by that road's congestion.
+   - Worth saying: the search runs in a **separate Python service**. Express owns the data and
+     the contract, FastAPI owns the numeric work, and it holds no database credentials — the
+     subgraph travels in the request.
+
+5. **The rail.** Three dimmed icons, each with a tooltip naming the sprint it arrives in. Say
    this out loud — it shows the roadmap is planned, not forgotten.
 
-5. **Sign out**, then reload. You stay signed out: the access token only ever lived in memory.
+6. **Sign out**, then reload. You stay signed out: the access token only ever lived in memory.
 
 ---
 
@@ -101,9 +117,10 @@ curl -s localhost:4000/readyz
 
 ```bash
 npm run typecheck && npm run lint && npm run test
+conda activate micromobility && cd apps/ml && pytest -q && ruff check .
 ```
 
-258 tests — 235 API, 23 frontend.
+266 tests — 239 API, 27 frontend — plus 21 pytest cases in the routing service.
 
 ---
 
@@ -121,6 +138,7 @@ npm run typecheck && npm run lint && npm run test
 | Colours never change | Socket blocked | Harmless — the map also polls every 15s |
 | `EADDRINUSE` | Stale process | `fuser -k 4000/tcp; fuser -k 5173/tcp` |
 | `ER_NOT_SUPPORTED_AUTH_MODE` | Wrong MySQL driver | Must be `mysql2`; MySQL 8.4 removed `mysql_native_password` |
+| **Plan** says the routing service is unreachable | uvicorn not running | `npm run dev:ml`, or check the `ml` pane |
 | Everything is broken | | `git checkout master` — Sprint 1 alone, fully tested, Fleet screen works |
 
 ---
@@ -128,15 +146,17 @@ npm run typecheck && npm run lint && npm run test
 ## What to say about scope
 
 Built: **M01** users and access, **M02** traffic monitoring, **M03** vehicle management,
-**M11** basic KPIs, **M12** weather. Five of sixteen modules, across Sprints 1 and 2.
+**M04** route planning, **M11** basic KPIs, **M12** weather. Six of sixteen modules, across
+Sprints 1 to 3.
 
 The count undersells it — those five include every piece of shared infrastructure the other
 eleven stand on: the migration system, spatial handling, auth and RBAC, the cache/jobs/event-bus
 adapters, the Socket.IO gateway, and the test harness.
 
-Remaining, in order: routing and the demand model (Sprint 3, needs a Python FastAPI service),
-the SimPy simulator (Sprint 4), fleet optimisation and analysis (Sprint 5), then notifications,
-billing, GBFS and emergency response (Sprint 6).
+Remaining, in order: the demand model (M05, the other half of Sprint 3), the SimPy simulator
+(Sprint 4), fleet optimisation and analysis (Sprint 5), then notifications, billing, GBFS and
+emergency response (Sprint 6). The Python service that M05 and M06 need now exists and is
+tested, so those are additions to a working system rather than new infrastructure.
 
 Honest framing if asked why it isn't finished: the foundation is disproportionately expensive
 and it is done. Sprint 3 onward adds features to a working system rather than building the

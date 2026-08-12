@@ -16,6 +16,10 @@ const FleetScreen = lazy(() =>
   import('../modules/fleet/index.ts').then((m) => ({ default: m.FleetScreen })),
 );
 
+const PlanScreen = lazy(() =>
+  import('../modules/plan/index.ts').then((m) => ({ default: m.PlanScreen })),
+);
+
 /** Lazy for the same reason: MapLibre is ~200 KB and only Live needs it. */
 const LiveScreen = lazy(() =>
   import('../modules/live/index.ts').then((m) => ({ default: m.LiveScreen })),
@@ -29,7 +33,7 @@ function NotFound() {
       </Typography>
       <Typography variant="h3">That screen does not exist</Typography>
       <Typography variant="body2" color="text.secondary">
-        Sprints 1-2 ship Sign in, Live and Fleet. The rest of the rail arrives later.
+        Sprints 1-3 ship Sign in, Live, Plan and Fleet. The rest of the rail arrives later.
       </Typography>
     </Box>
   );
@@ -44,6 +48,18 @@ export const router = createBrowserRouter([
         <AppShell>
           <Suspense fallback={<LoadingState />}>
             <LiveScreen />
+          </Suspense>
+        </AppShell>
+      </RequireAuth>
+    ),
+  },
+  {
+    path: '/plan',
+    element: (
+      <RequireAuth>
+        <AppShell>
+          <Suspense fallback={<LoadingState />}>
+            <PlanScreen />
           </Suspense>
         </AppShell>
       </RequireAuth>
