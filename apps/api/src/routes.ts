@@ -6,6 +6,7 @@ import { geoRoutes } from './modules/geo/routes.ts';
 import { ingestRoutes } from './modules/ingest/routes.ts';
 import { userRoutes } from './modules/users/routes.ts';
 import { trafficIngestRoutes, trafficRoutes } from './modules/traffic/routes.ts';
+import { routeRoutes } from './modules/routes/routes.ts';
 import { maintenanceRoutes, vehicleRoutes } from './modules/vehicles/routes.ts';
 import { weatherRoutes } from './modules/weather/routes.ts';
 
@@ -23,3 +24,4 @@ apiV1.use('/geo', geoRoutes);
 apiV1.use('/traffic', trafficRoutes);
 apiV1.use('/weather', weatherRoutes);
 apiV1.use('/analytics', analyticsRoutes);
+apiV1.use('/routes', routeRoutes);

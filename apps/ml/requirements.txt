@@ -1,0 +1,10 @@
+# Pinned for reproducibility. Python 3.12 under conda — 3.13 is avoided because
+# conda-forge builds for the ML stack lag a release, which is exactly the
+# missing-wheel problem CLAUDE.md warns about.
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.4
+networkx==3.4.2
+pytest==8.3.4
+httpx==0.28.1
+ruff==0.8.6

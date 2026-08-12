@@ -34,6 +34,7 @@ export const env = Object.freeze({
   queueDriver: optional('QUEUE_DRIVER', 'inline'),
   corsOrigin: optional('CORS_ORIGIN', 'http://localhost:5173'),
   mlServiceUrl: optional('ML_SERVICE_URL', ''),
+  mlInternalSecret: optional('ML_INTERNAL_SECRET', 'dev_only_secret'),
 });
 
 /** The schema this process talks to. Tests get `micromobility_test`. */

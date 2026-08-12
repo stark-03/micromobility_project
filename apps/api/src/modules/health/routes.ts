@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { QueryTypes } from 'sequelize';
+import { env } from '../../config/env.ts';
 import { sequelize } from '../../db/index.ts';
 import { ok } from '../../lib/envelope.ts';
 import { asyncHandler } from '../../middleware/error.ts';
@@ -12,11 +13,12 @@ healthRoutes.get('/healthz', (_req, res) => {
 });
 
 /**
- * Readiness. Checks MySQL.
+ * Readiness. Checks MySQL and the ML service.
  *
- * `ml` reports "not_configured" rather than failing: the FastAPI service does
- * not exist until Sprint 3, and a readiness probe that goes red for a component
- * nobody has built yet trains people to ignore it.
+ * The ML service exists as of Sprint 3, so it is probed for real. It is still
+ * not fatal: routing degrades, but the live map, the fleet and everything else
+ * keep working, and a probe that goes red for a partial outage teaches people
+ * to ignore it.
  */
 healthRoutes.get(
   '/readyz',
@@ -28,7 +30,18 @@ healthRoutes.get(
       mysql = 'down';
     }
 
-    const body = ok({ mysql, ml: 'not_configured' as const });
-    res.status(mysql === 'ok' ? 200 : 503).json(body);
+    let ml: 'ok' | 'down' | 'not_configured' = 'not_configured';
+    if (env.mlServiceUrl) {
+      try {
+        const probe = await fetch(`${env.mlServiceUrl}/healthz`, {
+          signal: AbortSignal.timeout(2000),
+        });
+        ml = probe.ok ? 'ok' : 'down';
+      } catch {
+        ml = 'down';
+      }
+    }
+
+    res.status(mysql === 'ok' ? 200 : 503).json(ok({ mysql, ml }));
   }),
 );
