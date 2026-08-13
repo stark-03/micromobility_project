@@ -52,3 +52,36 @@ globalThis.matchMedia ??= ((q: string) => ({
   removeEventListener: () => {},
   dispatchEvent: () => false,
 })) as unknown as typeof globalThis.matchMedia;
+
+/**
+ * jsdom implements no canvas 2D context, and Leaflet's canvas renderer calls
+ * into one the moment a map is created. Real browsers all have it; this stub
+ * keeps the tests representative rather than forcing the component to avoid
+ * `preferCanvas`, which is what makes it fast with ~1,700 polylines.
+ */
+const noop = () => undefined;
+const context2d = {
+  canvas: null as unknown,
+  save: noop, restore: noop, scale: noop, rotate: noop, translate: noop,
+  transform: noop, setTransform: noop, resetTransform: noop,
+  clearRect: noop, fillRect: noop, strokeRect: noop,
+  beginPath: noop, closePath: noop, moveTo: noop, lineTo: noop,
+  bezierCurveTo: noop, quadraticCurveTo: noop, arc: noop, arcTo: noop, rect: noop,
+  fill: noop, stroke: noop, clip: noop, isPointInPath: () => false,
+  isPointInStroke: () => false,
+  measureText: () => ({ width: 0 }),
+  fillText: noop, strokeText: noop,
+  drawImage: noop,
+  createLinearGradient: () => ({ addColorStop: noop }),
+  createPattern: () => null,
+  getImageData: () => ({ data: new Uint8ClampedArray(4) }),
+  putImageData: noop,
+  setLineDash: noop, getLineDash: () => [],
+  globalAlpha: 1, globalCompositeOperation: 'source-over',
+  lineWidth: 1, lineCap: 'butt', lineJoin: 'miter', miterLimit: 10,
+  strokeStyle: '#000', fillStyle: '#000', font: '10px sans-serif',
+};
+
+HTMLCanvasElement.prototype.getContext = function getContext(kind: string) {
+  return kind === '2d' ? (context2d as unknown as CanvasRenderingContext2D) : null;
+} as HTMLCanvasElement['getContext'];

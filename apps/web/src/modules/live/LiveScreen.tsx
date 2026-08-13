@@ -6,7 +6,7 @@ import { api } from '../../lib/api.ts';
 import type { ApiClientError } from '../../lib/api.ts';
 import { ErrorState, LoadingState } from '../../components/StateViews.tsx';
 import { FLOW_LABELS, flowRamp } from '../../lib/tokens.ts';
-import { CityMap } from './CityMap.tsx';
+import { StreetMap } from './StreetMap.tsx';
 import { SvgCityMap } from './SvgCityMap.tsx';
 import { LegendCard } from './LegendCard.tsx';
 
@@ -26,11 +26,12 @@ function Metric({ label, value, tint }: { label: string; value: string; tint?: s
 export function LiveScreen() {
   const [selected, setSelected] = useState<SegmentTrafficDto | null>(null);
   /**
-   * SVG is the default renderer. It needs no WebGL, no worker and no network,
-   * so it cannot fail the way a canvas map can. The MapLibre view adds pan,
-   * zoom and an optional street basemap for anyone who wants them.
+   * Real OpenStreetMap tiles by default, via Leaflet — no WebGL, no API key,
+   * no billing. The offline view draws the city from our own seeded geometry
+   * and needs no network at all, which is the safety net if a venue's wifi
+   * fails mid-demo.
    */
-  const [renderer, setRenderer] = useState<'svg' | 'gl'>('svg');
+  const [renderer, setRenderer] = useState<'street' | 'offline'>('street');
 
   const zones = useQuery({
     queryKey: ['geo', 'zones'],
@@ -74,7 +75,7 @@ export function LiveScreen() {
           value={live.cityCongestionIndex.toFixed(2)}
           tint={ramp[cityBand]}
         />
-        <Metric label="Segments monitored" value={`${measured.length}/${live.segments.length}`} />
+        <Metric label="Corridors monitored" value={String(live.segments.length)} />
         <Metric label="Heavy or jammed" value={String(jammed)} tint={jammed > 0 ? ramp[3] : undefined} />
         <Box className="flex-1" />
         <Chip
@@ -87,27 +88,27 @@ export function LiveScreen() {
           control={
             <Switch
               size="small"
-              checked={renderer === 'gl'}
-              onChange={(e) => setRenderer(e.target.checked ? 'gl' : 'svg')}
+              checked={renderer === 'offline'}
+              onChange={(e) => setRenderer(e.target.checked ? 'offline' : 'street')}
             />
           }
-          label={<Typography variant="body2">Interactive map (WebGL)</Typography>}
+          label={<Typography variant="body2">Offline map</Typography>}
         />
       </Box>
 
       <Box className="relative flex-1">
-        {renderer === 'svg' ? (
-          <SvgCityMap
+        {renderer === 'street' ? (
+          <StreetMap
             zones={zones.data!.data}
             segments={live.segments}
             selectedId={selected?.segmentId ?? null}
             onSelectSegment={setSelected}
           />
         ) : (
-          <CityMap
+          <SvgCityMap
             zones={zones.data!.data}
             segments={live.segments}
-            basemap
+            selectedId={selected?.segmentId ?? null}
             onSelectSegment={setSelected}
           />
         )}

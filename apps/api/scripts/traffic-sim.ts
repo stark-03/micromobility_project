@@ -73,8 +73,12 @@ function hotspotFactor(segmentIndex: number, total: number, tick: number): numbe
 }
 
 async function tickOnce(tick: number): Promise<{ rows: number; congestion: number }> {
+  // Arterials and collectors only. Real traffic services colour main corridors
+  // and leave side streets alone; instrumenting 7,476 residential lanes would
+  // swamp the database for nothing anyone would look at.
   const segments = await sequelize.query<SegmentRow>(
-    'SELECT id, speed_free_kph, road_class, zone_id FROM road_segments ORDER BY id',
+    `SELECT id, speed_free_kph, road_class, zone_id FROM road_segments
+     WHERE road_class IN ('arterial','collector') ORDER BY id`,
     { type: QueryTypes.SELECT },
   );
   if (segments.length === 0) {
@@ -107,12 +111,18 @@ async function tickOnce(tick: number): Promise<{ rows: number; congestion: numbe
     reps.push(s.id, now, meanSpeed, vehicleCount, occupancy, 'synthetic');
   });
 
-  await sequelize.query(
-    `INSERT INTO traffic_readings
-       (segment_id, observed_at, mean_speed_kph, vehicle_count, occupancy, source)
-     VALUES ${placeholders.join(',')}`,
-    { replacements: reps },
-  );
+  // Chunked: a single statement with thousands of tuples can exceed
+  // max_allowed_packet, and the failure mode is an opaque connection reset.
+  const CHUNK = 500;
+  for (let i = 0; i < placeholders.length; i += CHUNK) {
+    const slice = placeholders.slice(i, i + CHUNK);
+    await sequelize.query(
+      `INSERT INTO traffic_readings
+         (segment_id, observed_at, mean_speed_kph, vehicle_count, occupancy, source)
+       VALUES ${slice.join(',')}`,
+      { replacements: reps.slice(i * 6, (i + slice.length) * 6) },
+    );
+  }
 
   const result = await rebuildSnapshots(120);
   return { rows: segments.length, congestion: result.cityCongestionIndex };

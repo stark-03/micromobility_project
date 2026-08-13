@@ -7,7 +7,8 @@ import type { LngLat, Role, VehicleStatus, VehicleType } from '@mm/shared-types'
 import { sequelize as defaultSequelize } from '../index.ts';
 import { ensureModels } from '../models/index.ts';
 import { lineStringLiteral, pointLiteral, polygonLiteral } from '../spatial.ts';
-import { buildSegments, pointInZone, ZONES } from './belagavi-geo.ts';
+import { pointInZone, ZONES } from './belagavi-geo.ts';
+import { loadOsmSegments } from './osm.ts';
 import { assertConnected } from './graph.ts';
 
 export interface SeedSummary {
@@ -65,6 +66,21 @@ async function scalar(s: Sequelize, sql: string): Promise<number> {
   return Number(row?.n ?? 0);
 }
 
+/** Nearest zone centroid to a segment's midpoint. */
+function zoneCodeFor(geometry: LngLat[]): string {
+  const mid = geometry[Math.floor(geometry.length / 2)] ?? geometry[0]!;
+  let best = ZONES[0]!;
+  let bestD = Number.POSITIVE_INFINITY;
+  for (const z of ZONES) {
+    const d = (z.centroid[0] - mid[0]) ** 2 + (z.centroid[1] - mid[1]) ** 2;
+    if (d < bestD) {
+      bestD = d;
+      best = z;
+    }
+  }
+  return best.code;
+}
+
 export async function runSeed(options: SeedOptions = {}): Promise<SeedSummary> {
   const s = options.sequelize ?? defaultSequelize;
   ensureModels(s);
@@ -111,7 +127,7 @@ export async function runSeed(options: SeedOptions = {}): Promise<SeedSummary> {
     const zoneIdByCode = new Map(zoneRows.map((r) => [r.code, r.id]));
 
     // ---- road segments ----------------------------------------------------
-    const segments = buildSegments();
+    const segments = loadOsmSegments();
 
     // Refuse to insert a graph A* could not traverse. This runs BEFORE any
     // insert, so a broken generator fails loudly rather than seeding silently.
@@ -132,7 +148,7 @@ export async function runSeed(options: SeedOptions = {}): Promise<SeedSummary> {
            has_bike_lane = VALUES(has_bike_lane), lit = VALUES(lit)`,
         {
           replacements: [
-            sg.externalRef, sg.name, zoneIdByCode.get(sg.zoneCode) ?? null,
+            sg.externalRef, sg.name, zoneIdByCode.get(zoneCodeFor(sg.geometry)) ?? null,
             sg.fromNode, sg.toNode, sg.lengthM, sg.speedFreeKph, sg.lanes,
             sg.oneWay ? 1 : 0, sg.gradientPct, sg.roadClass,
             sg.hasBikeLane ? 1 : 0, sg.lit ? 1 : 0,

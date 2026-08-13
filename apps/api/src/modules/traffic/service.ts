@@ -48,8 +48,11 @@ function toDto(r: LiveRow): SegmentTrafficDto {
  * Reads traffic_snapshots, never traffic_readings.
  *
  * design.md §3.3: raw telemetry is written once and never scanned by the UI.
- * A LEFT JOIN keeps every segment on the map even before any reading has
- * arrived — an un-monitored road should render grey, not vanish.
+ *
+ * Only MONITORED segments are returned. The city has 9,212 real road segments
+ * and shipping all of their geometry on a 15-second poll is several megabytes
+ * for no benefit — the basemap already draws the street network. What this adds
+ * is the ~1,700 corridors that actually carry a congestion reading.
  */
 async function loadLive(zoneId?: string): Promise<TrafficLiveDto> {
   const where = zoneId ? 'WHERE rs.zone_id = ?' : '';
@@ -62,7 +65,7 @@ async function loadLive(zoneId?: string): Promise<TrafficLiveDto> {
             ts.mean_speed_kph, ts.vehicle_count, ts.occupancy,
             ts.congestion_index, ts.computed_at
      FROM road_segments rs
-     LEFT JOIN traffic_snapshots ts ON ts.segment_id = rs.id
+     JOIN traffic_snapshots ts ON ts.segment_id = rs.id
      ${where}
      ORDER BY rs.id`,
     { type: QueryTypes.SELECT, replacements: reps },

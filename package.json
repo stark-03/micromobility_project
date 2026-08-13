@@ -30,7 +30,8 @@
     "demo:traffic": "node --env-file=.env apps/api/scripts/traffic-sim.ts --hour 18.5 --interval 3000",
     "demo:check": "node --env-file=.env scripts/preflight.mjs",
     "dev:ml": "bash -lc \"source ~/miniconda3/etc/profile.d/conda.sh && conda activate micromobility && cd apps/ml && uvicorn app.main:app --reload --port 8000\"",
-    "demand:backfill": "node --env-file=.env apps/api/scripts/demand-backfill.ts"
+    "demand:backfill": "node --env-file=.env apps/api/scripts/demand-backfill.ts",
+    "osm:import": "node --env-file=.env apps/api/scripts/osm-import.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.18.0",

@@ -34,3 +34,6 @@ npm-debug.log*
 .idea/
 .DS_Store
 *.swp
+
+# cached Overpass response; the derived fixture is committed instead
+.osm-raw.json
