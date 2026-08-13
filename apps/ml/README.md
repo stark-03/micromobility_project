@@ -24,11 +24,27 @@ Verified interpreter: **Python 3.12.13**.
 
 ## Run
 
+From the repo root, `npm run dev:ml` does all of the below. By hand:
+
 ```bash
 conda activate micromobility
 cd apps/ml
 uvicorn app.main:app --reload --port 8000
 ```
+
+**The `cd` is load-bearing.** `app` is a package on the current directory, not an
+installed distribution, so running uvicorn from anywhere else fails with
+`ModuleNotFoundError: No module named 'app'` — and under `--reload` that error
+surfaces from the spawned worker, after the parent has already logged
+"Uvicorn running", which makes it read like a crash rather than a bad path.
+To start it from any directory, put the package on the path explicitly:
+
+```bash
+uvicorn app.main:app --reload --port 8000 --app-dir /path/to/repo/apps/ml
+```
+
+Liveness check: `curl localhost:8000/healthz` → `{"status":"ok",...}`.
+Interactive docs: <http://localhost:8000/docs>.
 
 ## Test
 
