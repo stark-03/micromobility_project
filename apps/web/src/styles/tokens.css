@@ -27,6 +27,16 @@
   --flow-3: #f2762e;
   --flow-4: #e5484d;
 
+  /* chart series — a SEPARATE scale from the mode and flow colours.
+     The --line-* accents were tuned as bright marks on near-black ink and sit
+     above the OKLCH L 0.48-0.67 band a chart surface wants, and --flow-* is
+     reserved for congestion. These two are validated as a categorical pair
+     against --ink-800: CVD separation dE 29.3 (protan), normal-vision 30.3,
+     contrast >= 3:1, both inside the band. Do not add a third by eye — run
+     the palette validator. */
+  --series-1: #4D8DF7;
+  --series-2: #BE8317;
+
   /* status */
   --ok: #3dd68c;
   --warn: #f2c94c;

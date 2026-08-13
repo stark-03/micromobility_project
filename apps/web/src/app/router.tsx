@@ -16,6 +16,10 @@ const FleetScreen = lazy(() =>
   import('../modules/fleet/index.ts').then((m) => ({ default: m.FleetScreen })),
 );
 
+const DataScreen = lazy(() =>
+  import('../modules/data/index.ts').then((m) => ({ default: m.DataScreen })),
+);
+
 const PlanScreen = lazy(() =>
   import('../modules/plan/index.ts').then((m) => ({ default: m.PlanScreen })),
 );
@@ -33,7 +37,7 @@ function NotFound() {
       </Typography>
       <Typography variant="h3">That screen does not exist</Typography>
       <Typography variant="body2" color="text.secondary">
-        Sprints 1-3 ship Sign in, Live, Plan and Fleet. The rest of the rail arrives later.
+        Sprints 1-3 ship Sign in, Live, Plan, Fleet and Data. The rest arrives later.
       </Typography>
     </Box>
   );
@@ -60,6 +64,18 @@ export const router = createBrowserRouter([
         <AppShell>
           <Suspense fallback={<LoadingState />}>
             <PlanScreen />
+          </Suspense>
+        </AppShell>
+      </RequireAuth>
+    ),
+  },
+  {
+    path: '/data',
+    element: (
+      <RequireAuth>
+        <AppShell>
+          <Suspense fallback={<LoadingState />}>
+            <DataScreen />
           </Suspense>
         </AppShell>
       </RequireAuth>

@@ -83,10 +83,21 @@ Use **admin** unless you are specifically demonstrating role restrictions.
      the contract, FastAPI owns the numeric work, and it holds no database credentials — the
      subgraph travels in the request.
 
-5. **The rail.** Three dimmed icons, each with a tooltip naming the sprint it arrives in. Say
+5. **Data.** The demand model, and the governance around it.
+   - Headline tiles: the active model's MAE against the seasonal-naive baseline, and the skill
+     ratio against design.md's 0.70 target.
+   - The forecast chart shows predicted trips per 15-minute slot for one zone, with the 80%
+     interval shaded. One zone at a time is deliberate — eight series would need a categorical
+     colour scale the design system does not have.
+   - **The registry is the interesting part.** It lists every fit, active or not. The first
+     model scored 0.787, missed the target, and was recorded **Inactive** — design.md §4 says a
+     model with no passing eval does not get an active flag, and the system enforced it rather
+     than shipping the model anyway.
+
+6. **The rail.** Two dimmed icons, each with a tooltip naming the sprint it arrives in. Say
    this out loud — it shows the roadmap is planned, not forgotten.
 
-6. **Sign out**, then reload. You stay signed out: the access token only ever lived in memory.
+7. **Sign out**, then reload. You stay signed out: the access token only ever lived in memory.
 
 ---
 
@@ -120,7 +131,7 @@ npm run typecheck && npm run lint && npm run test
 conda activate micromobility && cd apps/ml && pytest -q && ruff check .
 ```
 
-266 tests — 239 API, 27 frontend — plus 21 pytest cases in the routing service.
+272 tests — 239 API, 33 frontend — plus 40 pytest cases in the ML service.
 
 ---
 
@@ -139,6 +150,7 @@ conda activate micromobility && cd apps/ml && pytest -q && ruff check .
 | `EADDRINUSE` | Stale process | `fuser -k 4000/tcp; fuser -k 5173/tcp` |
 | `ER_NOT_SUPPORTED_AUTH_MODE` | Wrong MySQL driver | Must be `mysql2`; MySQL 8.4 removed `mysql_native_password` |
 | **Plan** says the routing service is unreachable | uvicorn not running | `npm run dev:ml`, or check the `ml` pane |
+| **Data** shows no forecast | Model not trained, or no history | `npm run demand:backfill`, then **Retrain model** |
 | Everything is broken | | `git checkout master` — Sprint 1 alone, fully tested, Fleet screen works |
 
 ---
@@ -146,17 +158,17 @@ conda activate micromobility && cd apps/ml && pytest -q && ruff check .
 ## What to say about scope
 
 Built: **M01** users and access, **M02** traffic monitoring, **M03** vehicle management,
-**M04** route planning, **M11** basic KPIs, **M12** weather. Six of sixteen modules, across
-Sprints 1 to 3.
+**M04** route planning, **M05** demand prediction, **M11** basic KPIs, **M12** weather. Seven of
+sixteen modules — Sprints 1 to 3 complete.
 
 The count undersells it — those five include every piece of shared infrastructure the other
 eleven stand on: the migration system, spatial handling, auth and RBAC, the cache/jobs/event-bus
 adapters, the Socket.IO gateway, and the test harness.
 
-Remaining, in order: the demand model (M05, the other half of Sprint 3), the SimPy simulator
-(Sprint 4), fleet optimisation and analysis (Sprint 5), then notifications, billing, GBFS and
-emergency response (Sprint 6). The Python service that M05 and M06 need now exists and is
-tested, so those are additions to a working system rather than new infrastructure.
+Remaining: the SimPy simulator (Sprint 4), fleet optimisation and analysis (Sprint 5), then
+notifications, billing, GBFS and emergency response (Sprint 6). The Python service the
+simulator needs now exists and is tested, so Sprint 4 adds to a working system rather than
+standing up new infrastructure.
 
 Honest framing if asked why it isn't finished: the foundation is disproportionately expensive
 and it is done. Sprint 3 onward adds features to a working system rather than building the
