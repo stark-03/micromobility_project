@@ -65,6 +65,25 @@ if (conn) {
     ok(`seeded — ${counts.zones} zones, ${counts.road_segments} segments, ${counts.vehicles} vehicles, ${counts.users} users`);
   }
 
+  // 3b. M06 scenarios — the Sim screen is empty without them
+  const [[sc]] = await conn
+    .query('SELECT COUNT(*) AS n FROM scenarios WHERE deleted_at IS NULL')
+    .catch(() => [[{ n: 0 }]]);
+  if (Number(sc.n) === 0) {
+    bad('no scenarios — the Sim screen will be empty', 'npm run db:seed');
+  } else {
+    const [[done]] = await conn
+      .query("SELECT COUNT(*) AS n FROM simulation_runs WHERE status = 'completed'")
+      .catch(() => [[{ n: 0 }]]);
+    if (Number(done.n) === 0) {
+      // Not fatal: pressing Run is the demo. But knowing beforehand beats
+      // discovering it in front of an examiner.
+      ok(`${sc.n} scenarios, none run yet — press Run simulation on the Sim screen`);
+    } else {
+      ok(`${sc.n} scenarios, ${done.n} completed runs`);
+    }
+  }
+
   // 4. Traffic data present — this is what makes the map colourful
   const [[tr]] = await conn.query('SELECT COUNT(*) AS n FROM traffic_snapshots').catch(() => [[{ n: 0 }]]);
   const [[ci]] = await conn.query('SELECT AVG(congestion_index) AS a FROM traffic_snapshots').catch(() => [[{ a: 0 }]]);

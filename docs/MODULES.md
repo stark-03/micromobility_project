@@ -183,20 +183,46 @@ GET    /api/v1/predictions/congestion?segmentId=
 **Outputs per run.** Trips served / unserved, mean wait, mean trip time, vehicle utilization, distance travelled empty vs loaded, congestion delta, emissions avoided, safety incidents.
 
 **Tables**
-`scenarios`, `simulation_runs`, `simulation_metrics`, `simulation_events`, `scenario_comparisons`
+`scenarios`, `simulation_runs`, `simulation_metrics`, `simulation_events`
 
-**API**
+`scenario_comparisons` was specified but **not built**. A comparison is a pure
+function of two runs, both immutable once completed, so a stored row can only
+agree with them or drift from them; the join is two primary-key lookups.
+`POST /runs/compare` computes it live. A *named, shared* comparison would be a
+different table (title + two run ids) and can be added when that is asked for.
+
+**API** *(as built, Sprint 4)*
 ```
-POST   /api/v1/scenarios
-GET    /api/v1/scenarios
-POST   /api/v1/scenarios/:id/runs        # queue a run
+POST   /api/v1/scenarios                 # planner|admin
+GET    /api/v1/scenarios                 # any signed-in role
+DELETE /api/v1/scenarios/:id             # soft delete; runs keep the name
+POST   /api/v1/scenarios/:id/runs        # queue a run -> 202 {status:'queued'}
+GET    /api/v1/scenarios/:id/runs
+POST   /api/v1/scenarios/:id/baseline    # {runId} — what deltas are read against
+GET    /api/v1/runs?scenarioId=
 GET    /api/v1/runs/:runId               # status + metrics
 GET    /api/v1/runs/:runId/timeline
-POST   /api/v1/runs/compare              # {runIds:[]}
-WS     run:progress, run:completed
+POST   /api/v1/runs/compare              # {runIds:[a,b]}
+WS     run:progress, run:completed       # room `run:<id>`, authorized on join
 ```
 
-**Screens.** Scenario builder (wizard), Run monitor, Results, Compare runs.
+**Screens.** Scenario builder, Run monitor, Results, Compare runs — all on one
+`/sim` screen: scenario list, then the selected scenario's run state, results,
+timeline and comparison.
+
+The builder is **one form rather than a four-step wizard**. Its eleven inputs
+have no dependencies between them, so paging them would add clicks and hide the
+lever a planner is changing. Every lever visible at once is what makes "change
+one thing and re-run" easy, which is the whole workflow.
+
+**Modelling note.** The engine is mesoscopic — riders travel zone centroid to
+zone centroid at a congestion-adjusted speed rather than turn-by-turn over the
+9,212-segment graph. See `docs/adr/0003-mesoscopic-simulation.md`.
+
+**Safety incidents are an expectation, not a count.** At realistic injury rates
+a 24-hour run samples zero or one incident, so a sampled count would make the
+bike-lane lever read as an improvement or a regression depending on the seed.
+The engine sums per-trip risk instead.
 
 ---
 

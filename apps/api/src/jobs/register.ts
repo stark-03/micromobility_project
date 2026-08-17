@@ -19,6 +19,15 @@ export function registerJobs(): void {
     await trainDemandModel();
   });
 
+  // M06: a simulation run is a background job by contract (MODULES.md), not
+  // because it is slow. The engine finishes a 24-hour city in well under a
+  // second, but the interface is what a distributed queue will need later.
+  registerJob('run-simulation', async (payload) => {
+    const { runId } = payload as { runId: string };
+    const { executeRun } = await import('../modules/simulation/service.ts');
+    await executeRun(runId);
+  });
+
   registerJob('echo', async (payload) => {
     const { outFile, value } = payload as { outFile?: string; value?: unknown };
     if (outFile) await fs.writeFile(outFile, JSON.stringify({ value }), 'utf8');

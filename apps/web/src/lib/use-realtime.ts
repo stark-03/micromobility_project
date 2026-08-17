@@ -61,3 +61,16 @@ export function disconnectRealtime(): void {
   socket?.disconnect();
   socket = null;
 }
+
+/**
+ * The shared socket, for screens that need a room rather than the app-wide
+ * events above.
+ *
+ * Returns null before sign-in, when there is no socket to join with. Callers
+ * must treat that as "no live updates" and fall back to polling — the server
+ * authorises room joins against the user's roles, so a room subscription is
+ * never guaranteed to succeed either.
+ */
+export function getSocket(): Socket | null {
+  return socket;
+}

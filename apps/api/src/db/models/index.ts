@@ -8,6 +8,10 @@ import { initRefreshToken, RefreshToken } from './refresh-token.ts';
 import { initRoadSegment, RoadSegment } from './road-segment.ts';
 import { initRole, Role } from './role.ts';
 import { initSavedPlace, SavedPlace } from './saved-place.ts';
+import { initScenario, Scenario } from './scenario.ts';
+import { initSimulationEvent, SimulationEvent } from './simulation-event.ts';
+import { initSimulationMetric, SimulationMetric } from './simulation-metric.ts';
+import { initSimulationRun, SimulationRun } from './simulation-run.ts';
 import { initTrafficReading, TrafficReading } from './traffic-reading.ts';
 import { initTrafficSnapshot, TrafficSnapshot } from './traffic-snapshot.ts';
 import { initTrip, Trip } from './trip.ts';
@@ -45,6 +49,10 @@ export function initModels(s: Sequelize) {
   initTrafficSnapshot(s);
   initWeatherReading(s);
   initWeatherForecast(s);
+  initScenario(s);
+  initSimulationRun(s);
+  initSimulationMetric(s);
+  initSimulationEvent(s);
 
   // ---- associations --------------------------------------------------------
 
@@ -110,6 +118,22 @@ export function initModels(s: Sequelize) {
   Zone.hasMany(WeatherForecast, { foreignKey: 'zone_id', as: 'forecasts' });
   WeatherForecast.belongsTo(Zone, { foreignKey: 'zone_id', as: 'zone' });
 
+  // M06 simulation. A scenario owns its runs; a run owns its metrics and its
+  // timeline, both of which cascade on delete because neither means anything
+  // without the run that produced them.
+  Scenario.hasMany(SimulationRun, { foreignKey: 'scenario_id', as: 'runs' });
+  SimulationRun.belongsTo(Scenario, { foreignKey: 'scenario_id', as: 'scenario' });
+  Scenario.belongsTo(User, { foreignKey: 'created_by', as: 'creator' });
+  SimulationRun.belongsTo(User, { foreignKey: 'created_by', as: 'creator' });
+  // The scenario's chosen baseline. Nullable: a scenario has no baseline until
+  // one of its runs completes.
+  Scenario.belongsTo(SimulationRun, { foreignKey: 'baseline_run_id', as: 'baselineRun' });
+
+  SimulationRun.hasMany(SimulationMetric, { foreignKey: 'run_id', as: 'metrics' });
+  SimulationMetric.belongsTo(SimulationRun, { foreignKey: 'run_id', as: 'run' });
+  SimulationRun.hasMany(SimulationEvent, { foreignKey: 'run_id', as: 'timeline' });
+  SimulationEvent.belongsTo(SimulationRun, { foreignKey: 'run_id', as: 'run' });
+
   // NOTE: TrafficReading, like VehicleTelemetry, gets NO association to Vehicle on purpose. The table
   // to RoadSegment/Vehicle. Both tables are RANGE-partitioned and MySQL forbids
   // foreign keys on partitioned tables, so there is no constraint for an
@@ -138,6 +162,10 @@ export const models = {
   MaintenanceTicket,
   Trip,
   TrafficReading,
+  Scenario,
+  SimulationRun,
+  SimulationMetric,
+  SimulationEvent,
   TrafficSnapshot,
   WeatherReading,
   WeatherForecast,
@@ -158,6 +186,10 @@ export {
   RoadSegment,
   Role,
   SavedPlace,
+  Scenario,
+  SimulationEvent,
+  SimulationMetric,
+  SimulationRun,
   Trip,
   User,
   UserPreference,

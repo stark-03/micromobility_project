@@ -11,9 +11,25 @@ afterAll(async () => {
   await s.close();
 });
 
+/**
+ * The registry, named rather than counted.
+ *
+ * A bare length assertion fails on every legitimate addition while saying
+ * nothing about what changed, and it had already drifted — the test was called
+ * "all 16 tables" and asserted 20. Listing them means a new model is one
+ * obvious line, and a model silently dropped from `initModels` still fails.
+ */
+const EXPECTED_MODELS = [
+  'Role', 'Operator', 'User', 'UserRole', 'RefreshToken', 'UserPreference',
+  'SavedPlace', 'ApiKey', 'AuditLog', 'Zone', 'RoadSegment', 'Vehicle',
+  'VehicleStatusHistory', 'VehicleTelemetry', 'MaintenanceTicket', 'Trip',
+  'TrafficReading', 'Scenario', 'SimulationRun', 'SimulationMetric',
+  'SimulationEvent', 'TrafficSnapshot', 'WeatherReading', 'WeatherForecast',
+];
+
 describe('models', () => {
-  it('defines all 16 tables', () => {
-    expect(Object.keys(models)).toHaveLength(20);
+  it('registers exactly the expected models', () => {
+    expect(Object.keys(models).sort()).toEqual([...EXPECTED_MODELS].sort());
   });
 
   // Every attribute a model declares must exist as a column, or the SELECT

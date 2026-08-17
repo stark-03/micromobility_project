@@ -27,8 +27,8 @@ interface Destination {
 }
 
 /**
- * design.md §6.4 order. Only Sim and Admin remain unbuilt; they render
- * disabled with a tooltip naming their sprint.
+ * design.md §6.4 order. Only Admin remains unbuilt; it renders disabled
+ * with a tooltip naming its sprint.
  *
  * Showing them is deliberate: hiding the product's real shape makes the app
  * look smaller than it is, and faking working links is worse. A disabled item
@@ -37,7 +37,7 @@ interface Destination {
 const DESTINATIONS: Destination[] = [
   { key: 'live', label: 'Live', icon: <MapOutlined />, path: '/live' },
   { key: 'plan', label: 'Plan', icon: <ExploreOutlined />, path: '/plan' },
-  { key: 'sim', label: 'Sim', icon: <HexagonOutlined />, arrives: 'Sprint 4' },
+  { key: 'sim', label: 'Sim', icon: <HexagonOutlined />, path: '/sim' },
   { key: 'fleet', label: 'Fleet', icon: <TwoWheelerOutlined />, path: '/fleet' },
   { key: 'data', label: 'Data', icon: <InsertChartOutlined />, path: '/data' },
   { key: 'admin', label: 'Admin', icon: <SettingsOutlined />, arrives: 'Sprint 6' },

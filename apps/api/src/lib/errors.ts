@@ -19,6 +19,11 @@ export const STATUS_BY_CODE: Record<ErrorCode, number> = {
   LAST_ADMIN_PROTECTED: 409,
   INVALID_STATE_TRANSITION: 409,
   NO_ROUTE_FOUND: 422,
+  SCENARIO_NOT_FOUND: 404,
+  RUN_NOT_FOUND: 404,
+  // The run exists but has no results yet — a state problem, not a
+  // missing resource, so 409 rather than 404.
+  RUN_NOT_COMPLETED: 409,
   SERVICE_UNAVAILABLE: 503,
   RATE_LIMITED: 429,
   INTERNAL_ERROR: 500,

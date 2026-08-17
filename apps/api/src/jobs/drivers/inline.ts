@@ -1,6 +1,8 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Worker } from 'node:worker_threads';
+import { bus } from '../../realtime/bus.ts';
+import { isJobBusMessage } from '../progress.ts';
 import type { JobDriver } from '../runner.ts';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -24,6 +26,12 @@ export class InlineJobDriver implements JobDriver {
     });
 
     this.#running.add(worker);
+
+    // A worker's `bus` is a different EventEmitter than the gateway's — see
+    // jobs/progress.ts. This is the one place the two are joined up.
+    worker.on('message', (message: unknown) => {
+      if (isJobBusMessage(message)) bus.emit(message.event, message.payload);
+    });
 
     worker.on('error', (err) => {
       // A failed job must never take the API process down with it.

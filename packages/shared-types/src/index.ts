@@ -43,6 +43,9 @@ export const ERROR_CODES = [
   'LAST_ADMIN_PROTECTED',
   'INVALID_STATE_TRANSITION',
   'NO_ROUTE_FOUND',
+  'SCENARIO_NOT_FOUND',
+  'RUN_NOT_FOUND',
+  'RUN_NOT_COMPLETED',
   'SERVICE_UNAVAILABLE',
   'RATE_LIMITED',
   'INTERNAL_ERROR',
@@ -334,4 +337,118 @@ export interface RouteCompareDto {
 export interface AuthResponseDto {
   accessToken: string;
   user: UserDto;
+}
+
+// ---- M06 simulation --------------------------------------------------------
+
+export type RunStatus = 'queued' | 'running' | 'completed' | 'failed';
+
+export interface FleetMixDto {
+  scooter: number;
+  ebike: number;
+  bike: number;
+}
+
+export interface ScenarioWeatherDto {
+  precipitationMm: number;
+  tempC: number;
+}
+
+/** The what-if. Every field here must change a number the planner can see. */
+export interface PolicyLeversDto {
+  bikeLaneZones: string[];
+  closedZones: string[];
+  demandMultiplier: number;
+  rebalanceEnabled: boolean;
+  rebalanceIntervalMin: number;
+  rebalanceVanCapacity: number;
+}
+
+export interface ScenarioDto {
+  id: string;
+  name: string;
+  description: string | null;
+  simHours: number;
+  startHour: number;
+  fleet: FleetMixDto;
+  weather: ScenarioWeatherDto;
+  policy: PolicyLeversDto;
+  baselineRunId: string | null;
+  createdBy: string;
+  createdAt: string;
+  runCount: number;
+  latestRun: SimulationRunDto | null;
+}
+
+/**
+ * Metrics are a flat string→number map rather than a fixed interface because
+ * the set grows per module (M07 adds rebalancing cost, M10 emissions splits)
+ * and the storage is a narrow key/value table. The keys below are the ones
+ * present today; a client must tolerate extras.
+ */
+export type SimulationMetrics = Record<string, number>;
+
+export interface SimulationRunDto {
+  id: string;
+  scenarioId: string;
+  scenarioName: string | null;
+  seed: number;
+  status: RunStatus;
+  /** 0–1. */
+  progress: number;
+  startedAt: string | null;
+  finishedAt: string | null;
+  durationMs: number | null;
+  error: string | null;
+  createdAt: string;
+  metrics: SimulationMetrics;
+  /** Non-scalar breakdowns: per-kind utilisation, unserved reason codes. */
+  detail: Record<string, unknown> | null;
+}
+
+export interface SimulationTimelinePointDto {
+  bucket: number;
+  simMinutes: number;
+  tripsServed: number;
+  tripsUnserved: number;
+  meanWaitSeconds: number;
+  safetyIncidents: number;
+}
+
+export type CompareDirection = 'better' | 'worse' | 'same';
+
+export interface CompareRowDto {
+  metric: string;
+  baseline: number;
+  variant: number;
+  delta: number;
+  deltaPct: number | null;
+  /**
+   * Whether the change is an improvement. Sign alone cannot say: more trips
+   * served is better, more trips unserved is worse, and both are positive.
+   */
+  direction: CompareDirection;
+}
+
+export interface RunComparisonDto {
+  baseline: SimulationRunDto;
+  variant: SimulationRunDto;
+  rows: CompareRowDto[];
+}
+
+export interface RunProgressEvent {
+  runId: string;
+  scenarioId: string;
+  pct: number;
+  simSeconds: number;
+  tripsServed: number;
+  tripsUnserved: number;
+}
+
+export interface RunCompletedEvent {
+  runId: string;
+  scenarioId: string;
+  status: 'completed' | 'failed';
+  durationMs: number | null;
+  error: string | null;
 }

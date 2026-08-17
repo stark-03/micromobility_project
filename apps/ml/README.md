@@ -60,6 +60,8 @@ ruff check .
 | Route | Purpose |
 |---|---|
 | `GET /healthz` | Liveness. Unauthenticated — Express probes it for `/readyz`. |
+| `POST /internal/sim/run` | M06. Runs one scenario, **streaming NDJSON**: `progress` lines then one `result`. Errors after the stream opens travel as a `type:"error"` line, because the 200 is already committed. |
+| `POST /internal/sim/compare` | M06. Two metric sets → direction-labelled deltas. |
 | `GET /internal/routing/profiles` | The three profiles and their weights. |
 | `POST /internal/routing/plan` | One route for one profile. |
 | `POST /internal/routing/compare` | All three profiles for one origin/destination pair. |

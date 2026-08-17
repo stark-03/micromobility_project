@@ -5,10 +5,16 @@ Express is the only permitted caller; the browser never talks to port 8000
 require the shared secret header.
 """
 
+import json
+
 from fastapi import FastAPI, Header, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from .config import ML_INTERNAL_SECRET, SERVICE_NAME, SERVICE_VERSION
+from .sim.engine import Simulation
+from .sim.metrics import compare, summarise, timeline
+from .sim.scenario import ScenarioSpec
 from .routing.astar import NoRouteError, plan_route
 from .models.demand import (
     has_model,
@@ -193,3 +199,65 @@ def ml_predict_demand(
 def ml_models(x_internal_secret: str | None = Header(default=None)) -> dict:
     require_secret(x_internal_secret)
     return {"loaded": has_model(), "version": model_version()}
+
+
+# ---- M06 simulation ---------------------------------------------------------
+
+
+class SimRunRequest(BaseModel):
+    runId: str = "adhoc"
+    spec: ScenarioSpec
+    timelineBucketMinutes: int = Field(default=30, ge=5, le=120)
+
+
+class SimCompareRequest(BaseModel):
+    baseline: dict
+    variant: dict
+
+
+@app.post("/internal/sim/run")
+def sim_run(body: SimRunRequest, x_internal_secret: str | None = Header(default=None)):
+    """Runs one scenario, streaming progress as newline-delimited JSON.
+
+    NDJSON rather than a plain JSON body because a long run must not look like a
+    hung request. Express reads this stream from its job worker, forwards each
+    `progress` line to the `run:<id>` socket room, and persists the final
+    `result` line. A client that does not care about progress can simply read to
+    the last line.
+
+    Streaming also means the response starts immediately, so an operator sees
+    the run move rather than watching a spinner and wondering if it died.
+    """
+    require_secret(x_internal_secret)
+
+    def lines():
+        try:
+            sim = Simulation(body.spec)
+            for snapshot in sim.run_iter():
+                yield json.dumps({"type": "progress", "runId": body.runId, **snapshot}) + "\n"
+
+            yield json.dumps(
+                {
+                    "type": "result",
+                    "runId": body.runId,
+                    "seed": body.spec.seed,
+                    "metrics": summarise(body.spec, sim.state, sim.fleet),
+                    "timeline": timeline(body.spec, sim.state, body.timelineBucketMinutes),
+                }
+            ) + "\n"
+        except Exception as exc:  # noqa: BLE001
+            # The response has already begun, so the status code is committed to
+            # 200 and an error cannot be signalled by one. It has to travel in
+            # the stream, and Express keys on `type` to tell the cases apart.
+            yield json.dumps({"type": "error", "runId": body.runId, "message": str(exc)}) + "\n"
+
+    return StreamingResponse(lines(), media_type="application/x-ndjson")
+
+
+@app.post("/internal/sim/compare")
+def sim_compare(
+    body: SimCompareRequest, x_internal_secret: str | None = Header(default=None)
+) -> dict:
+    """Baseline vs variant as signed, direction-labelled deltas."""
+    require_secret(x_internal_secret)
+    return {"rows": compare(body.baseline, body.variant)}

@@ -47,6 +47,12 @@ ensureModels(testDb);
  * order correct means this still works if that ever stops being true.
  */
 const TABLES = [
+  // M06. Children before parents; scenarios must go before users, which they
+  // reference via created_by.
+  'simulation_metrics',
+  'simulation_events',
+  'simulation_runs',
+  'scenarios',
   'traffic_readings',
   'traffic_snapshots',
   'weather_readings',

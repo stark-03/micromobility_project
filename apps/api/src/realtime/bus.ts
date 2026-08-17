@@ -22,6 +22,22 @@ export interface BusEvents {
     to: VehicleStatus;
     at: string;
   };
+  /** M06. Published from a worker thread — see jobs/progress.ts. */
+  'run:progress': {
+    runId: string;
+    scenarioId: string;
+    pct: number;
+    simSeconds: number;
+    tripsServed: number;
+    tripsUnserved: number;
+  };
+  'run:completed': {
+    runId: string;
+    scenarioId: string;
+    status: 'completed' | 'failed';
+    durationMs: number | null;
+    error: string | null;
+  };
 }
 
 export type BusEvent = keyof BusEvents;

@@ -126,6 +126,15 @@ export function attachGateway(server: HttpServer): Server {
     io?.to(`operator:${payload.operatorId}`).emit('vehicle:created', payload);
   });
 
+  // M06. Scoped to the run's room: progress for a scenario nobody is watching
+  // should not be broadcast to every connected planner.
+  bus.on('run:progress', (payload) => {
+    io?.to(`run:${payload.runId}`).emit('run:progress', payload);
+  });
+  bus.on('run:completed', (payload) => {
+    io?.to(`run:${payload.runId}`).emit('run:completed', payload);
+  });
+
   logger.info('Socket.IO gateway attached');
   return io;
 }

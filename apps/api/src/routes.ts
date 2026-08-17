@@ -8,10 +8,11 @@ import { userRoutes } from './modules/users/routes.ts';
 import { trafficIngestRoutes, trafficRoutes } from './modules/traffic/routes.ts';
 import { predictionRoutes } from './modules/predictions/routes.ts';
 import { routeRoutes } from './modules/routes/routes.ts';
+import { runRoutes, simulationRoutes } from './modules/simulation/routes.ts';
 import { maintenanceRoutes, vehicleRoutes } from './modules/vehicles/routes.ts';
 import { weatherRoutes } from './modules/weather/routes.ts';
 
-/** The /api/v1 router. M01, M03 (Sprint 1) and M02, M11, M12 (Sprint 2). */
+/** The /api/v1 router. M01–M05, M11, M12 and M06 (Sprint 4). */
 export const apiV1 = Router();
 
 apiV1.use('/auth', authRoutes);
@@ -27,3 +28,7 @@ apiV1.use('/weather', weatherRoutes);
 apiV1.use('/analytics', analyticsRoutes);
 apiV1.use('/routes', routeRoutes);
 apiV1.use('/predictions', predictionRoutes);
+// M06. Runs are addressed independently of their scenario because a run
+// monitor deep-link needs one id, not two.
+apiV1.use('/scenarios', simulationRoutes);
+apiV1.use('/runs', runRoutes);
