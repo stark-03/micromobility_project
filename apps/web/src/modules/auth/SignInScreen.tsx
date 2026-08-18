@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
-import { Alert, Box, Button, Paper, TextField, Typography } from '@mui/material';
+import { Alert, Box, Button, Link, Paper, TextField, Typography } from '@mui/material';
 import type { AuthResponseDto } from '@mm/shared-types';
 import { api } from '../../lib/api.ts';
 import type { ApiClientError } from '../../lib/api.ts';
@@ -112,6 +112,13 @@ export function SignInScreen() {
 
         <Typography variant="caption" color="text.secondary" className="mt-6 block">
           Demo accounts are printed once by <span className="mono">npm run db:seed</span>.
+        </Typography>
+      
+        <Typography variant="body2" color="text.secondary" className="mt-5 text-center">
+          New here?{' '}
+          <Link component={RouterLink} to="/signup">
+            Create an account
+          </Link>
         </Typography>
       </Paper>
     </Box>

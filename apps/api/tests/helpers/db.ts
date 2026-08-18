@@ -47,6 +47,8 @@ ensureModels(testDb);
  * order correct means this still works if that ever stops being true.
  */
 const TABLES = [
+  // Charging infrastructure. References zones and users.
+  'charging_stations',
   // M11/M10 rollups. Derived data; safe to wipe between tests.
   'zone_daily_rollups',
   'kpi_daily',

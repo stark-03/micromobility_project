@@ -3,7 +3,7 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { Box, Typography } from '@mui/material';
 import { AppShell } from '../components/AppShell.tsx';
 import { LoadingState } from '../components/StateViews.tsx';
-import { SignInScreen } from '../modules/auth/index.ts';
+import { SignInScreen, SignUpScreen } from '../modules/auth/index.ts';
 import { RequireAuth } from './guard.tsx';
 
 /**
@@ -54,6 +54,7 @@ function NotFound() {
 
 export const router = createBrowserRouter([
   { path: '/signin', element: <SignInScreen /> },
+  { path: '/signup', element: <SignUpScreen /> },
   {
     path: '/live',
     element: (

@@ -98,10 +98,22 @@ function wrap(node: React.ReactNode) {
 describe('AdminScreen', () => {
   it('shows the headline KPI totals', async () => {
     wrap(<AdminScreen />);
-    expect(await screen.findByText('City analytics')).toBeDefined();
-    expect(screen.getByText('Trips')).toBeDefined();
+    // Await a TILE, not the header. The header and tabs now render while the
+    // analytics query is still in flight — deliberately, so one tab's loading
+    // state cannot hide the other tab — so finding the header proves nothing
+    // about the data.
+    expect(await screen.findByText('Trips')).toBeDefined();
+    expect(screen.getByText('City analytics')).toBeDefined();
     expect(screen.getByText('50,518')).toBeDefined();
     expect(screen.getByText('CO₂ avoided')).toBeDefined();
+  });
+
+  it('keeps the Charging tab reachable while analytics is still loading', async () => {
+    wrap(<AdminScreen />);
+    // Regression guard: analytics used to early-return on loading/error/empty,
+    // which took the whole screen down with it — including a tab that does not
+    // depend on rollups at all.
+    expect(screen.getByRole('tab', { name: 'Charging' })).toBeDefined();
   });
 
   it('says the numbers come from rollups, not live aggregation', async () => {

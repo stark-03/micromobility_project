@@ -11,6 +11,7 @@ import { pointInZone, ZONES } from './belagavi-geo.ts';
 import { loadOsmSegments } from './osm.ts';
 import { assertConnected } from './graph.ts';
 
+import { seedChargingStations } from './charging.ts';
 import { seedScenarios } from './scenarios.ts';
 
 export interface SeedSummary {
@@ -22,6 +23,7 @@ export interface SeedSummary {
   trips: number;
   telemetry: number;
   scenarios: number;
+  chargingStations: number;
 }
 
 export interface SeedOptions {
@@ -387,6 +389,7 @@ export async function runSeed(options: SeedOptions = {}): Promise<SeedSummary> {
     // M06 demo scenarios. Last, because they reference the seeded planner and
     // the seeded zones.
     await seedScenarios(s, t);
+    await seedChargingStations(s, t);
   });
 
   const summary: SeedSummary = {
@@ -398,6 +401,7 @@ export async function runSeed(options: SeedOptions = {}): Promise<SeedSummary> {
     trips: await scalar(s, 'SELECT COUNT(*) AS n FROM trips'),
     telemetry: await scalar(s, 'SELECT COUNT(*) AS n FROM vehicle_telemetry'),
     scenarios: await scalar(s, 'SELECT COUNT(*) AS n FROM scenarios'),
+    chargingStations: await scalar(s, 'SELECT COUNT(*) AS n FROM charging_stations'),
   };
 
   if (!options.quiet && generatedPasswords.length > 0) {

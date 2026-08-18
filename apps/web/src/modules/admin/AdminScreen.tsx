@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Box, Button, MenuItem, Paper, TextField, Tooltip, Typography } from '@mui/material';
+import { Box, Button, MenuItem, Paper, Tab, Tabs, TextField, Tooltip, Typography } from '@mui/material';
 import {
   Bar,
   BarChart,
@@ -15,6 +15,7 @@ import {
 import { api } from '../../lib/api.ts';
 import { EmptyState, ErrorState, LoadingState } from '../../components/StateViews.tsx';
 import { authSnapshot } from '../../lib/auth-store.ts';
+import { ChargingPanel } from './ChargingPanel.tsx';
 
 /**
  * M11 analytics + M10 environmental.
@@ -111,7 +112,10 @@ function Stat({
   return hint ? <Tooltip title={hint}>{tile}</Tooltip> : tile;
 }
 
+type TabKey = 'analytics' | 'charging';
+
 export function AdminScreen() {
+  const [tab, setTab] = useState<TabKey>('analytics');
   const [days, setDays] = useState(30);
   const from = useMemo(() => isoDaysAgo(days), [days]);
   const to = useMemo(() => new Date().toISOString().slice(0, 10), []);
@@ -153,28 +157,29 @@ export function AdminScreen() {
     URL.revokeObjectURL(url);
   }
 
-  if (summary.isError) {
-    return <ErrorState error={summary.error} onRetry={() => void summary.refetch()} />;
-  }
-  if (summary.isLoading) return <LoadingState />;
+  /**
+   * The analytics tab's own states — deliberately NOT early returns.
+   *
+   * Returning before the header meant a failed or empty analytics query took
+   * the whole screen down with it, including the Charging tab, which does not
+   * depend on rollups at all. A screen with two independent tabs must not let
+   * one tab's loading state hide the other.
+   */
+  const analyticsState: 'error' | 'loading' | 'empty' | 'ready' = summary.isError
+    ? 'error'
+    : summary.isLoading
+      ? 'loading'
+      : (summary.data?.data.range.days ?? 0) === 0
+        ? 'empty'
+        : 'ready';
 
-  const s = summary.data!.data;
+  const s = summary.data?.data ?? null;
   const points = series.data?.data ?? [];
   const env = environment.data?.data ?? null;
 
-  if (s.range.days === 0) {
-    return (
-      <Box className="p-6">
-        <EmptyState
-          title="No rollups yet"
-          action="The dashboard reads nightly rollup tables, and none have been built. Run `npm run rollup` to backfill from the seeded trip history."
-        />
-      </Box>
-    );
-  }
-
-  const modal = Object.entries(s.modalSplit).sort((a, b) => b[1] - a[1]);
-  const worstFlow = Math.max(1, ...s.zones.map((z) => Math.abs(z.netFlow)));
+  // `s` is null until the query resolves, so both derived values tolerate it.
+  const modal = Object.entries(s?.modalSplit ?? {}).sort((a, b) => b[1] - a[1]);
+  const worstFlow = Math.max(1, ...(s?.zones ?? []).map((z) => Math.abs(z.netFlow)));
 
   return (
     <Box className="flex flex-col gap-4 p-6">
@@ -184,10 +189,32 @@ export function AdminScreen() {
             Admin
           </Typography>
           <Typography variant="h2" sx={{ fontSize: 30 }}>
-            City analytics
+            {tab === 'analytics' ? 'City analytics' : 'Charging infrastructure'}
           </Typography>
         </Box>
 
+        <Tabs value={tab} onChange={(_e, v: TabKey) => setTab(v)}>
+          <Tab value="analytics" label="Analytics" />
+          <Tab value="charging" label="Charging" />
+        </Tabs>
+      </Box>
+
+      {tab === 'charging' && <ChargingPanel />}
+
+      {tab === 'analytics' && analyticsState === 'error' && (
+        <ErrorState error={summary.error} onRetry={() => void summary.refetch()} />
+      )}
+      {tab === 'analytics' && analyticsState === 'loading' && <LoadingState />}
+      {tab === 'analytics' && analyticsState === 'empty' && (
+        <EmptyState
+          title="No rollups yet"
+          action="The dashboard reads nightly rollup tables, and none have been built. Run `npm run rollup` to backfill from the seeded trip history."
+        />
+      )}
+
+      {tab === 'analytics' && analyticsState === 'ready' && s && (
+      <>
+      <Box className="flex flex-wrap items-end justify-end gap-4">
         <Box className="flex flex-wrap items-center gap-3">
           <TextField
             select
@@ -401,6 +428,8 @@ export function AdminScreen() {
           </Box>
         </Box>
       </Paper>
+      </>
+      )}
     </Box>
   );
 }
