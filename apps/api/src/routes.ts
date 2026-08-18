@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { adminRoutes } from './modules/admin/routes.ts';
 import { analyticsRoutes } from './modules/analytics/routes.ts';
 import { authRoutes } from './modules/auth/routes.ts';
+import { fleetRoutes } from './modules/fleet/routes.ts';
 import { geoRoutes } from './modules/geo/routes.ts';
 import { ingestRoutes } from './modules/ingest/routes.ts';
 import { userRoutes } from './modules/users/routes.ts';
@@ -32,3 +33,5 @@ apiV1.use('/predictions', predictionRoutes);
 // monitor deep-link needs one id, not two.
 apiV1.use('/scenarios', simulationRoutes);
 apiV1.use('/runs', runRoutes);
+// M07 fleet optimisation.
+apiV1.use('/fleet', fleetRoutes);

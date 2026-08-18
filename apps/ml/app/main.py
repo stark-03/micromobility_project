@@ -12,6 +12,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from .config import ML_INTERNAL_SECRET, SERVICE_NAME, SERVICE_VERSION
+from .fleet.rebalance import ZoneState, plan_charging, solve_rebalance
 from .sim.engine import Simulation
 from .sim.metrics import compare, summarise, timeline
 from .sim.scenario import ScenarioSpec
@@ -261,3 +262,102 @@ def sim_compare(
     """Baseline vs variant as signed, direction-labelled deltas."""
     require_secret(x_internal_secret)
     return {"rows": compare(body.baseline, body.variant)}
+
+
+# ---- M07 fleet optimisation -------------------------------------------------
+
+
+class ZoneStateIn(BaseModel):
+    zoneId: str
+    name: str = ""
+    lat: float
+    lng: float
+    supply: int = Field(..., ge=0)
+    demand: float = Field(..., ge=0)
+
+
+class RebalanceRequest(BaseModel):
+    zones: list[ZoneStateIn] = Field(..., min_length=1)
+    vanCount: int = Field(default=2, ge=0, le=50)
+    vanCapacity: int = Field(default=8, ge=1, le=50)
+    # How far a van will drive to place one vehicle, in km. The operator's dial.
+    valuePerVehicleKm: float = Field(default=6.0, ge=0.0, le=200.0)
+
+
+class ChargingRequest(BaseModel):
+    zones: list[ZoneStateIn] = Field(..., min_length=1)
+    vehicles: list[dict] = Field(default_factory=list)
+    crewCapacity: int = Field(default=10, ge=1, le=200)
+    minBatteryPct: float = Field(default=30.0, ge=0.0, le=100.0)
+
+
+def _states(zones: list[ZoneStateIn]) -> list[ZoneState]:
+    return [
+        ZoneState(
+            zoneId=z.zoneId, name=z.name, lat=z.lat, lng=z.lng, supply=z.supply, demand=z.demand
+        )
+        for z in zones
+    ]
+
+
+@app.post("/internal/fleet/rebalance")
+def fleet_rebalance(
+    body: RebalanceRequest, x_internal_secret: str | None = Header(default=None)
+) -> dict:
+    """Min-cost transportation solve: surplus zones -> deficit zones.
+
+    The same function the M06 simulator calls for its rebalancing lever, so a
+    planner who simulates the policy is testing the algorithm crews will run.
+    """
+    require_secret(x_internal_secret)
+
+    plan = solve_rebalance(
+        _states(body.zones),
+        van_count=body.vanCount,
+        van_capacity=body.vanCapacity,
+        value_per_vehicle_km=body.valuePerVehicleKm,
+    )
+
+    return {
+        "status": plan.status,
+        "totalVehicles": plan.totalVehicles,
+        "totalDistanceKm": plan.totalDistanceKm,
+        "deficitBefore": plan.deficitBefore,
+        "deficitAfter": plan.deficitAfter,
+        "notes": plan.notes,
+        "moves": [
+            {
+                "fromZoneId": m.fromZoneId,
+                "toZoneId": m.toZoneId,
+                "vehicles": m.vehicles,
+                "distanceKm": m.distanceKm,
+            }
+            for m in plan.moves
+        ],
+    }
+
+
+@app.post("/internal/fleet/charging")
+def fleet_charging(
+    body: ChargingRequest, x_internal_secret: str | None = Header(default=None)
+) -> dict:
+    """Which flat vehicles to collect, cheapest availability loss first."""
+    require_secret(x_internal_secret)
+
+    picks = plan_charging(
+        body.vehicles,
+        _states(body.zones),
+        crew_capacity=body.crewCapacity,
+        min_battery_pct=body.minBatteryPct,
+    )
+    return {
+        "candidates": [
+            {
+                "vehicleId": c.vehicleId,
+                "zoneId": c.zoneId,
+                "batteryPct": c.batteryPct,
+                "priority": c.priority,
+            }
+            for c in picks
+        ]
+    }

@@ -47,6 +47,11 @@ ensureModels(testDb);
  * order correct means this still works if that ever stops being true.
  */
 const TABLES = [
+  // M07. Tasks and snapshots reference plans, zones and users.
+  'rebalance_tasks',
+  'zone_supply_snapshots',
+  'charging_tasks',
+  'rebalance_plans',
   // M06. Children before parents; scenarios must go before users, which they
   // reference via created_by.
   'simulation_metrics',

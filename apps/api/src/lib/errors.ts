@@ -24,6 +24,8 @@ export const STATUS_BY_CODE: Record<ErrorCode, number> = {
   // The run exists but has no results yet — a state problem, not a
   // missing resource, so 409 rather than 404.
   RUN_NOT_COMPLETED: 409,
+  PLAN_NOT_FOUND: 404,
+  TASK_NOT_FOUND: 404,
   SERVICE_UNAVAILABLE: 503,
   RATE_LIMITED: 429,
   INTERNAL_ERROR: 500,

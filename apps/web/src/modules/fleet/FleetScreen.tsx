@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Box, MenuItem, Paper, TextField, Typography } from '@mui/material';
+import { Box, MenuItem, Paper, Tab, Tabs, TextField, Typography } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import type { GridColDef } from '@mui/x-data-grid';
 import { VEHICLE_STATUSES, VEHICLE_TYPES } from '@mm/shared-types';
@@ -10,6 +10,7 @@ import type { ApiClientError, Envelope } from '../../lib/api.ts';
 import { queryKeys } from '../../lib/query-keys.ts';
 import { EmptyState, ErrorState, LoadingState } from '../../components/StateViews.tsx';
 import { BatteryCell, ModeDot, RelativeTime, StatusChip } from './cells.tsx';
+import { RebalancePanel } from './RebalancePanel.tsx';
 
 const columns: GridColDef<VehicleDto>[] = [
   {
@@ -51,7 +52,10 @@ const columns: GridColDef<VehicleDto>[] = [
   },
 ];
 
+type TabKey = 'vehicles' | 'rebalance';
+
 export function FleetScreen() {
+  const [tab, setTab] = useState<TabKey>('vehicles');
   const [page, setPage] = useState(0);
   const [limit, setLimit] = useState(20);
   const [status, setStatus] = useState<VehicleStatus | ''>('');
@@ -86,10 +90,21 @@ export function FleetScreen() {
             Fleet
           </Typography>
           <Typography variant="h2" sx={{ fontSize: 30 }}>
-            Vehicles
+            {tab === 'vehicles' ? 'Vehicles' : 'Rebalancing'}
           </Typography>
         </Box>
 
+        <Tabs value={tab} onChange={(_e, v: TabKey) => setTab(v)}>
+          <Tab value="vehicles" label="Vehicles" />
+          <Tab value="rebalance" label="Rebalancing" />
+        </Tabs>
+      </Box>
+
+      {tab === 'rebalance' ? (
+        <RebalancePanel />
+      ) : (
+      <>
+      <Box className="flex flex-wrap items-end justify-end gap-4">
         <Box className="flex flex-wrap gap-3">
           <TextField
             select
@@ -167,6 +182,8 @@ export function FleetScreen() {
           />
         )}
       </Paper>
+      </>
+      )}
     </Box>
   );
 }

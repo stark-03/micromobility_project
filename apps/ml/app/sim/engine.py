@@ -27,6 +27,7 @@ from dataclasses import dataclass, field
 
 import simpy
 
+from ..fleet.rebalance import ZoneState, solve_rebalance
 from .scenario import (
     BATTERY_PCT_PER_KM,
     MAX_WALK_M,
@@ -43,6 +44,12 @@ R_EARTH_M = 6_371_000.0
 # Incidents per kilometre ridden in benign conditions. Deliberately small: the
 # figure that matters is the *ratio* between scenarios, not the absolute count.
 BASE_INCIDENT_RATE_PER_KM = 8e-5
+
+# How far a van will drive to place one vehicle where it is wanted, in km. The
+# operator's dial: above this, the haul costs more than the trip it enables.
+# Belagavi's zones are 1-4 km apart, so 6 km permits any move inside the city
+# while still refusing a pointless cross-town run.
+REBALANCE_VALUE_KM = 6.0
 
 
 def haversine_m(a: tuple[float, float], b: tuple[float, float]) -> float:
@@ -391,8 +398,16 @@ class Simulation:
     def _rebalancer(self) -> simpy.Event:
         """Moves idle vehicles from surplus zones to starved ones.
 
-        Deliberately simple — greedy, surplus to deficit. M07 replaces it with a
-        min-cost assignment; this exists so the *lever* is testable now.
+        This calls **the same M07 solver Express uses to dispatch real crews**
+        (`app.fleet.rebalance.solve_rebalance`), not a simulation-flavoured
+        imitation of it. That is the point: a planner who simulates rebalancing
+        and then switches it on is testing the algorithm they will actually
+        run. Two implementations would drift, and the drift would be silent —
+        both keep producing plausible plans, they just stop being the same one.
+
+        Demand is the forecast for the coming interval rather than the count of
+        vehicles sitting idle. Balancing stock against stock spreads vehicles
+        evenly, which is the wrong target: a quiet zone does not need its share.
         """
         interval = self.spec.policy.rebalanceIntervalMin * 60.0
         capacity = self.spec.policy.rebalanceVanCapacity
@@ -402,41 +417,51 @@ class Simulation:
             if self.env.now >= self._horizon:
                 return
 
-            idle = {
-                zid: [v for v in bucket if v.usable]
-                for zid, bucket in self._by_zone.items()
-                if zid not in self._closed
-            }
-            if len(idle) < 2:
+            hour = int((self.spec.startHour + self.env.now / 3600.0)) % 24
+            interval_hours = interval / 3600.0
+
+            states: list[ZoneState] = []
+            idle: dict[str, list[Vehicle]] = {}
+            for zone_id, bucket in self._by_zone.items():
+                if zone_id in self._closed:
+                    continue
+                zone = self.zones[zone_id]
+                usable = sorted((v for v in bucket if v.usable), key=lambda v: v.vehicleId)
+                idle[zone_id] = usable
+                expected = hourly_demand(self.spec, zone)[hour] * interval_hours
+                states.append(
+                    ZoneState(
+                        zoneId=zone_id,
+                        name=zone.name,
+                        lat=zone.lat,
+                        lng=zone.lng,
+                        supply=len(usable),
+                        demand=expected,
+                    )
+                )
+
+            if len(states) < 2:
                 continue
 
-            mean = sum(len(v) for v in idle.values()) / len(idle)
-            surplus = sorted(
-                (z for z in idle if len(idle[z]) > mean * 1.35),
-                key=lambda z: (-len(idle[z]), z),
-            )
-            deficit = sorted(
-                (z for z in idle if len(idle[z]) < mean * 0.65),
-                key=lambda z: (len(idle[z]), z),
+            plan = solve_rebalance(
+                states,
+                van_count=1,
+                van_capacity=capacity,
+                value_per_vehicle_km=REBALANCE_VALUE_KM,
             )
 
-            moved = 0
-            for to_zone in deficit:
-                if moved >= capacity:
-                    break
-                for from_zone in surplus:
-                    if moved >= capacity or not idle[from_zone]:
-                        break
-                    vehicle = idle[from_zone].pop()
-                    d = haversine_m(
-                        (self.zones[from_zone].lat, self.zones[from_zone].lng),
-                        (self.zones[to_zone].lat, self.zones[to_zone].lng),
+            for move in plan.moves:
+                available = idle.get(move.fromZoneId, [])
+                for _ in range(min(move.vehicles, len(available))):
+                    vehicle = available.pop()
+                    metres = haversine_m(
+                        (self.zones[move.fromZoneId].lat, self.zones[move.fromZoneId].lng),
+                        (self.zones[move.toZoneId].lat, self.zones[move.toZoneId].lng),
                     )
-                    self._move(vehicle, to_zone)
-                    vehicle.emptyM += d
+                    self._move(vehicle, move.toZoneId)
+                    vehicle.emptyM += metres
                     self.state.rebalanceMoves += 1
-                    self.state.rebalanceDistanceM += d
-                    moved += 1
+                    self.state.rebalanceDistanceM += metres
 
     # ---- driver -------------------------------------------------------------
 

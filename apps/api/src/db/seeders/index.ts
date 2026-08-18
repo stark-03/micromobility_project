@@ -221,13 +221,48 @@ export async function runSeed(options: SeedOptions = {}): Promise<SeedSummary> {
     }
 
     // ---- vehicles (natural key: operator_id + external_ref) ---------------
+    /**
+     * Overnight drift, not an even spread.
+     *
+     * Round-robin across zones produced a perfectly balanced fleet, which is
+     * the one distribution a real city never has: vehicles end the night
+     * wherever yesterday's trips *ended* — the commercial core and the transport
+     * hub — while residential edges run thin. That mismatch between where the
+     * fleet is and where tomorrow's demand starts is precisely the problem M07
+     * exists to solve, so seeding it away left the optimiser with nothing to do.
+     *
+     * Weights are relative shares of the fleet, deliberately NOT proportional to
+     * each zone's population index (which is what drives demand).
+     */
+    const DRIFT: Record<string, number> = {
+      CMP: 4.5, // Camp — nightlife and retail, everything ends up here
+      TLK: 3.0, // Tilakwadi — dense, well served
+      SHP: 1.0, // Shahapur — busiest by day, stripped by morning
+      HND: 2.2,
+      ANG: 0.8,
+      SDN: 1.6,
+      VDG: 0.6, // residential edges, chronically short
+      UDY: 0.5,
+    };
+
     const zoneCodes = ZONES.map((z) => z.code);
+    const driftTotal = zoneCodes.reduce((n, c) => n + (DRIFT[c] ?? 1), 0);
+    // Deterministic cumulative allocation: vehicle i lands in the zone whose
+    // share of the fleet covers position i. Same seed, same city, every time.
+    const zoneForVehicle: string[] = [];
+    for (const code of zoneCodes) {
+      const count = Math.round((VEHICLE_COUNT * (DRIFT[code] ?? 1)) / driftTotal);
+      for (let k = 0; k < count; k++) zoneForVehicle.push(code);
+    }
+    // Rounding can leave the array a vehicle short or long of the fleet size.
+    while (zoneForVehicle.length < VEHICLE_COUNT) zoneForVehicle.push(zoneCodes[0]!);
+    zoneForVehicle.length = VEHICLE_COUNT;
     for (let i = 0; i < VEHICLE_COUNT; i++) {
       const opCode = OPERATORS[i % OPERATORS.length]!.code;
       const operatorId = operatorIdByCode.get(opCode)!;
       const type: VehicleType = VEHICLE_TYPES[i % VEHICLE_TYPES.length]!;
       const status = STATUS_MIX[i % STATUS_MIX.length]!;
-      const zoneCode = zoneCodes[i % zoneCodes.length]!;
+      const zoneCode = zoneForVehicle[i]!;
       const zoneId = zoneIdByCode.get(zoneCode)!;
       const zone = ZONES.find((z) => z.code === zoneCode)!;
       const pos: LngLat = pointInZone(zone.centroid, i);
