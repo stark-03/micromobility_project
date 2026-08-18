@@ -32,7 +32,8 @@
     "dev:ml": "bash -lc \"source ~/miniconda3/etc/profile.d/conda.sh && conda activate micromobility && cd apps/ml && uvicorn app.main:app --reload --port 8000\"",
     "demand:backfill": "node --env-file=.env apps/api/scripts/demand-backfill.ts",
     "osm:import": "node --env-file=.env apps/api/scripts/osm-import.ts",
-    "rollup": "node --env-file=.env apps/api/scripts/rollup.ts"
+    "rollup": "node --env-file=.env apps/api/scripts/rollup.ts",
+    "guide:pdf": "node scripts/guide-pdf.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.18.0",

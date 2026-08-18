@@ -109,9 +109,14 @@ Use **admin** unless you are specifically demonstrating role restrictions.
    - Drag **worth driving N km** down to 1 and re-solve: the plan empties, and
      the solver says why. That dial is the operator's real trade-off — hauling a
      scooter across town for one extra trip is not work worth doing.
-   - The same solver runs the M06 rebalancing lever. On the demo city it cuts
-     unserved trips 18.4% for 78 van-km, where the greedy version it replaced
-     managed 13.0% for 204 km.
+   - The same solver runs the M06 rebalancing lever. Clicking the seeded
+     **Overnight rebalancing** scenario against **Baseline** shows −4.2% unmet
+     demand for 109 van-km — modest, because that scenario's 165 vehicles are
+     not badly starved.
+   - The bigger claim, if asked, is measured on a deliberately thin fleet where
+     rebalancing actually bites: the LP cuts unserved trips **18.4%** using
+     **78 van-km**, where the greedy mover it replaced managed 13.0% for 204 km.
+     Quote that as a solver comparison, not as the on-screen number.
 
 10. **Admin.** City analytics, M11 and M10.
    - Every number is read from nightly rollup tables — `kpi_daily` and

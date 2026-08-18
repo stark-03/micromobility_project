@@ -37,3 +37,7 @@ npm-debug.log*
 
 # cached Overpass response; the derived fixture is committed instead
 .osm-raw.json
+
+# Generated reference PDF. The HTML source in docs/ is committed; regenerate
+# with `npm run guide:pdf`.
+Viva-Run-of-Show.pdf
