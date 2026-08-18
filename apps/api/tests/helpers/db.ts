@@ -47,6 +47,9 @@ ensureModels(testDb);
  * order correct means this still works if that ever stops being true.
  */
 const TABLES = [
+  // M11/M10 rollups. Derived data; safe to wipe between tests.
+  'zone_daily_rollups',
+  'kpi_daily',
   // M07. Tasks and snapshots reference plans, zones and users.
   'rebalance_tasks',
   'zone_supply_snapshots',

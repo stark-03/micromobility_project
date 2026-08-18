@@ -5,6 +5,10 @@ export interface ApiMeta {
   limit?: number;
   total?: number;
   nextCursor?: string | null;
+  /** Range metadata for M11 analytics responses. Dates are YYYY-MM-DD. */
+  from?: string;
+  to?: string;
+  days?: number;
 }
 
 export interface ApiSuccess<T> {

@@ -54,6 +54,21 @@ export function startSchedule(): void {
     ),
   );
 
+  // Nightly rollups — 02:00 (CLAUDE.md). Re-rolls the last two days rather
+  // than just yesterday: a trip that ends after midnight is written with a
+  // start time on the previous day, so yesterday's totals are not final until
+  // today. The rollup is idempotent, so re-running costs nothing but time.
+  tasks.push(
+    cron.schedule(
+      '0 2 * * *',
+      safely('nightly-rollup', async () => {
+        const { rollupRecent } = await import('../modules/analytics/rollups.ts');
+        const r = await rollupRecent(2);
+        logger.info('nightly rollup complete', { ...r });
+      }),
+    ),
+  );
+
   // Partition maintenance — 02:15 on the 1st. Provisions months ahead, so a
   // single missed run is harmless.
   tasks.push(

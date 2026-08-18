@@ -24,6 +24,10 @@ const PlanScreen = lazy(() =>
   import('../modules/plan/index.ts').then((m) => ({ default: m.PlanScreen })),
 );
 
+const AdminScreen = lazy(() =>
+  import('../modules/admin/index.ts').then((m) => ({ default: m.AdminScreen })),
+);
+
 /** Lazy: Recharts rides along with the Sim results, and only Sim needs it. */
 const SimScreen = lazy(() =>
   import('../modules/sim/index.ts').then((m) => ({ default: m.SimScreen })),
@@ -42,7 +46,7 @@ function NotFound() {
       </Typography>
       <Typography variant="h3">That screen does not exist</Typography>
       <Typography variant="body2" color="text.secondary">
-        Sprints 1-4 ship Sign in, Live, Plan, Sim, Fleet and Data. The rest arrives later.
+        Sign in, Live, Plan, Sim, Fleet, Data and Admin all exist. This path does not.
       </Typography>
     </Box>
   );
@@ -81,6 +85,18 @@ export const router = createBrowserRouter([
         <AppShell>
           <Suspense fallback={<LoadingState />}>
             <SimScreen />
+          </Suspense>
+        </AppShell>
+      </RequireAuth>
+    ),
+  },
+  {
+    path: '/admin',
+    element: (
+      <RequireAuth>
+        <AppShell>
+          <Suspense fallback={<LoadingState />}>
+            <AdminScreen />
           </Suspense>
         </AppShell>
       </RequireAuth>

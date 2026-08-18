@@ -27,12 +27,11 @@ interface Destination {
 }
 
 /**
- * design.md §6.4 order. Only Admin remains unbuilt; it renders disabled
- * with a tooltip naming its sprint.
+ * design.md §6.4 order. Every destination is now built.
  *
- * Showing them is deliberate: hiding the product's real shape makes the app
- * look smaller than it is, and faking working links is worse. A disabled item
- * that says when it arrives is honest.
+ * The `arrives` field is kept rather than deleted: it is how an unbuilt screen
+ * is shown honestly — visible, disabled, and labelled with its sprint — and the
+ * next module to be stubbed will want it again.
  */
 const DESTINATIONS: Destination[] = [
   { key: 'live', label: 'Live', icon: <MapOutlined />, path: '/live' },
@@ -40,7 +39,7 @@ const DESTINATIONS: Destination[] = [
   { key: 'sim', label: 'Sim', icon: <HexagonOutlined />, path: '/sim' },
   { key: 'fleet', label: 'Fleet', icon: <TwoWheelerOutlined />, path: '/fleet' },
   { key: 'data', label: 'Data', icon: <InsertChartOutlined />, path: '/data' },
-  { key: 'admin', label: 'Admin', icon: <SettingsOutlined />, arrives: 'Sprint 6' },
+  { key: 'admin', label: 'Admin', icon: <SettingsOutlined />, path: '/admin' },
 ];
 
 const CONDITION_GLYPH: Record<string, string> = {

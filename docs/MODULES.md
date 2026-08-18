@@ -239,19 +239,46 @@ The engine sums per-trip risk instead.
 **Tables**
 `zone_supply_snapshots`, `rebalance_plans`, `rebalance_tasks`, `charging_tasks`
 
-**API**
+**API** *(as built, Sprint 5)*
 ```
-POST   /api/v1/fleet/rebalance/plan      # {zoneIds, horizon, vanCount}
+GET    /api/v1/fleet/supply-demand?zoneId=&horizonHours=
+POST   /api/v1/fleet/rebalance/plan      # {horizonHours, vanCount, vanCapacity, valuePerVehicleKm}
+GET    /api/v1/fleet/rebalance/plans
 GET    /api/v1/fleet/rebalance/plans/:id
 PATCH  /api/v1/fleet/rebalance/tasks/:id # {status}
-GET    /api/v1/fleet/supply-demand?zoneId=
 ```
 
-**Screens.** Rebalance planner (map + task list), Crew task view (mobile-first).
+**Screens.** Rebalance planner — the *Rebalancing* tab on Fleet: supply vs
+target per zone, the solver dials, and the crew task list. A separate
+mobile-first crew view is not built; the task list is responsive and a crew can
+work from it.
+
+**How the solve works.** Transportation LP over HiGHS
+(`apps/ml/app/fleet/rebalance.py`). Minimising distance alone has a trivial
+optimum — move nothing — so the objective prices the *benefit* of a relocation
+against its cost, with `valuePerVehicleKm` as the operator's dial: how far a
+van will drive to place one vehicle. Answers are whole vehicles without
+rounding, because a transportation problem's constraint matrix is totally
+unimodular.
+
+**The simulator calls this same function** for its rebalancing lever, so a
+planner who simulates rebalancing is testing the algorithm crews will run.
+
+**Demand is a proportional target, not raw trips.** Comparing forecast trips
+against vehicles on the ground is a unit error (a vehicle serves several trips
+per horizon) and asks the wrong question (at peak every zone is short, so an
+absolute-surplus rule finds nothing to move). Each zone's target is its
+demand-weighted share of the fleet that exists, so gaps sum to zero.
+
+**Not built:** shift-hour constraints beyond a single van-capacity bound, and
+`charging_tasks` persistence — the charging planner exists and is tested in the
+ML service (`plan_charging`) but Express does not yet store its output.
 
 ---
 
 ## M08 — Parking & Docking
+
+> **Not built.** Skipped in Sprint 5 under a one-day budget. It is largely a station registry plus a point-in-polygon check; neither teaches anything the zone model does not already demonstrate, and both are additive to a working system. Nothing else depends on it.
 
 **Purpose.** Parking zones, docking stations, availability, and no-park geofences.
 
@@ -312,13 +339,25 @@ GET    /api/v1/safety/report?zoneId=&from=&to=
 **Tables**
 `emission_factors`, `trip_energy`, `emission_daily_rollups`
 
-**API**
+**API** *(as built, Sprint 5)*
 ```
-GET    /api/v1/environment/summary?scope=city|zone|operator&from=&to=
-GET    /api/v1/environment/trips/:tripId
+GET    /api/v1/analytics/environment?from=&to=
 ```
 
-**Screens.** Sustainability dashboard, Emissions card on scenario results.
+Served from `/analytics/*` rather than `/environment/*`: it reads the same
+`kpi_daily` rollup as every other metric, and a second prefix over one table
+would be two names for one thing. Per-trip energy (`GET /environment/trips/:id`)
+is **not built** — `trip_energy` would be a derived row per trip, and the number
+is recoverable from distance and mode at any time.
+
+**Emission factors are data, not constants** (`emission_factors` table), each
+with a cited source, because M10's entire output is a claim about avoided
+emissions and an uncited factor is a guess. The counterfactual — every trip
+replaces a car trip of equal distance — travels with the number in the API
+response, so a reader who rejects it can see what they are rejecting.
+
+**Screens.** Emissions and factors on the Admin dashboard; CO₂ avoided is
+already a metric on M06 scenario results.
 
 ---
 
@@ -334,15 +373,26 @@ GET    /api/v1/environment/trips/:tripId
 **Tables**
 `kpi_daily`, `zone_daily_rollups`, `reports`, `report_runs`
 
-**API**
+**API** *(as built, Sprint 5)*
 ```
-GET    /api/v1/analytics/kpis?from=&to=&zoneId=
-GET    /api/v1/analytics/timeseries?metric=&bucket=
-POST   /api/v1/reports
-GET    /api/v1/reports/:id/export?format=csv|pdf
+GET    /api/v1/analytics/kpis                    # live operational counters
+GET    /api/v1/analytics/summary?from=&to=       # totals, modal split, per zone
+GET    /api/v1/analytics/timeseries?from=&to=    # one point per day
+GET    /api/v1/analytics/environment?from=&to=   # M10
+GET    /api/v1/analytics/export?from=&to=        # text/csv download
 ```
 
-**Screens.** Overview dashboard, Explore (metric + breakdown pickers), Reports.
+All range endpoints read `kpi_daily` and `zone_daily_rollups` only — CLAUDE.md
+forbids aggregating raw data at request time. The nightly job (`rollup-daily`,
+02:00) is the sole writer; `npm run rollup` backfills a fresh database.
+
+**Saved reports (`reports`, `report_runs`) are not built.** The parameters that
+would be saved are two dates, which the URL already carries. **PDF export is not
+built** — CSV is what a table of daily numbers is read in, and PDF needs a
+renderer for no added information.
+
+**Screens.** Admin — KPI tiles, trips/day, net flow per zone, modal split,
+emission factors, CSV export.
 
 ---
 
@@ -370,6 +420,8 @@ GET    /api/v1/weather/forecast?zoneId=&hours=
 
 ## M13 — Communication & Notifications
 
+> **Not built.** Skipped in Sprint 5. The realtime seam it would use already exists and carries simulation progress (`realtime/bus.ts` -> Socket.IO rooms); what is missing is templates, delivery adapters and preferences.
+
 **Purpose.** Move events between users, vehicles, servers and city infrastructure.
 
 **Responsibilities**
@@ -394,6 +446,8 @@ WS     notification:new
 ---
 
 ## M14 — Payment & Billing
+
+> **Not built.** Skipped in Sprint 5, and the one module where not building it is also the safe choice: no card data touches this system by design, so a half-built billing path is a liability rather than a demo.
 
 **Purpose.** Ride charges, subscriptions, invoices. *Simulated by default.*
 
@@ -431,19 +485,32 @@ GET    /api/v1/billing/invoices
 **Tables**
 `integrations`, `integration_logs`, `external_feed_cache`
 
-**API**
+**API** *(partially built, Sprint 5)*
 ```
-GET    /api/v1/integrations
-POST   /api/v1/integrations/:id/sync
-GET    /gbfs/2.3/gbfs.json               # public, unauthenticated
+GET    /gbfs/2.3/gbfs.json                 # public, unauthenticated
+GET    /gbfs/2.3/system_information.json
+GET    /gbfs/2.3/vehicle_types.json
 GET    /gbfs/2.3/free_bike_status.json
 ```
 
-**Screens.** Integrations admin (status, last sync, error log).
+**The outbound GBFS publisher is built**; inbound adapters, the `CityAdapter`
+interface, `integrations`/`integration_logs`, the circuit breaker and the
+integrations admin screen are **not**. Publishing is the half that makes this
+project's fleet consumable by third parties without any of them integrating
+against a private API; the inbound half needs an external system to integrate
+*with*, and there is none on this machine.
+
+**Two privacy rules are enforced in the feed, not documented as intentions:**
+- Only `available` vehicles are published. An `in_use` vehicle's position is a
+  rider's live location, and the feed is unauthenticated.
+- `bike_id` is a per-hour rotating pseudonym, so a third party polling the feed
+  cannot reconstruct one vehicle's history — or the movements of who rode it.
 
 ---
 
 ## M16 — Emergency Response
+
+> **Not built.** Skipped in Sprint 5. It depends on M09 incident detection, which is itself only partly built (segment safety scoring feeds M04 routing; kernel-density risk zones and telemetry fall-detection are not built).
 
 **Purpose.** Handle accidents, breakdowns and disruptions.
 

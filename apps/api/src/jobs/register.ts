@@ -28,6 +28,14 @@ export function registerJobs(): void {
     await executeRun(runId);
   });
 
+  // M11/M10: the nightly rollup. The ONLY writer of kpi_daily and
+  // zone_daily_rollups, and the only place trips are scanned in bulk.
+  registerJob('rollup-daily', async (payload) => {
+    const { days } = (payload ?? {}) as { days?: number };
+    const { rollupRecent } = await import('../modules/analytics/rollups.ts');
+    await rollupRecent(days ?? 2);
+  });
+
   registerJob('echo', async (payload) => {
     const { outFile, value } = payload as { outFile?: string; value?: unknown };
     if (outFile) await fs.writeFile(outFile, JSON.stringify({ value }), 'utf8');

@@ -84,6 +84,16 @@ if (conn) {
     }
   }
 
+  // 3c. M11 rollups — the Admin dashboard reads these and nothing else.
+  const [[roll]] = await conn
+    .query('SELECT COUNT(*) AS n FROM kpi_daily')
+    .catch(() => [[{ n: 0 }]]);
+  if (Number(roll.n) === 0) {
+    bad('no analytics rollups — the Admin dashboard will be empty', 'npm run rollup');
+  } else {
+    ok(`${roll.n} days of analytics rollups`);
+  }
+
   // 4. Traffic data present — this is what makes the map colourful
   const [[tr]] = await conn.query('SELECT COUNT(*) AS n FROM traffic_snapshots').catch(() => [[{ n: 0 }]]);
   const [[ci]] = await conn.query('SELECT AVG(congestion_index) AS a FROM traffic_snapshots').catch(() => [[{ a: 0 }]]);

@@ -7,6 +7,7 @@ import { ensureModels } from './db/models/index.ts';
 import { registerJobs } from './jobs/register.ts';
 import { errorHandler, notFoundHandler } from './middleware/error.ts';
 import { userLimiter } from './middleware/rate-limit.ts';
+import { gbfsRoutes } from './modules/gbfs/routes.ts';
 import { healthRoutes } from './modules/health/routes.ts';
 import { apiV1 } from './routes.ts';
 
@@ -37,6 +38,9 @@ export function createApp(): Express {
 
   // Health checks sit outside the limiter — a probe must never be throttled.
   app.use(healthRoutes);
+  // M15. Public and unauthenticated by the standard's design — mounted
+  // outside /api/v1 so no auth middleware sits in its path.
+  app.use(`/gbfs/2.3`, gbfsRoutes);
 
   app.use('/api/v1', userLimiter, apiV1);
 

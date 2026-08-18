@@ -25,7 +25,7 @@ One command, four processes: API on **:4000**, web on **:5173**, the ML routing 
 **:8000**, and the synthetic traffic generator ticking every 3 seconds pinned to evening rush.
 
 The ML service runs in the `micromobility` conda environment (Python 3.12). If it fails to
-start, everything except **Plan** and **Sim** still works — `/readyz` will say `ml: down` and the other
+start, everything except **Plan**, **Sim** and **Fleet → Rebalancing** still works — `/readyz` will say `ml: down` and the other
 screens are unaffected.
 
 > If port 5173 is taken, Vite will pick 5174 and say so — read the URL it prints.
@@ -98,7 +98,42 @@ Use **admin** unless you are specifically demonstrating role restrictions.
    - Say the seed line out loud: same seed + same scenario = identical metrics, and there is a
      test asserting exactly that. A simulation you cannot reproduce is not evidence.
 
-6. **Data.** The demand model, and the governance around it.
+6. **Fleet → Rebalancing.** The optimisation module, M07.
+   - The table shows what each zone *has* against its demand-weighted *target
+     share of the fleet that exists*. Say that phrase — it is the modelling
+     point. Rebalancing cannot create vehicles; it decides where the ones you
+     have should stand, so the gaps sum to zero.
+   - Press **Solve rebalancing**. A transportation LP runs in the Python service
+     and returns whole vehicles — no rounding, because the constraint matrix of
+     a transportation problem is totally unimodular.
+   - Drag **worth driving N km** down to 1 and re-solve: the plan empties, and
+     the solver says why. That dial is the operator's real trade-off — hauling a
+     scooter across town for one extra trip is not work worth doing.
+   - The same solver runs the M06 rebalancing lever. On the demo city it cuts
+     unserved trips 18.4% for 78 van-km, where the greedy version it replaced
+     managed 13.0% for 204 km.
+
+10. **Admin.** City analytics, M11 and M10.
+   - Every number is read from nightly rollup tables — `kpi_daily` and
+     `zone_daily_rollups`. Nothing aggregates 73k trips at request time, which
+     is why a 30-day dashboard renders instantly.
+   - **Where vehicles accumulate** is the chart to point at: Shahapur starts
+     ~1,250 more trips than it ends, Sadashiv Nagar ends ~940 more than it
+     starts. That is the overnight drift the rebalancing planner corrects — two
+     modules describing the same phenomenon from different ends.
+   - Emission factors are stored data with cited sources, and the counterfactual
+     ("each trip replaces a car trip") is printed beside the number rather than
+     buried in code. A reader who rejects the assumption can see it.
+   - **Export CSV** downloads the daily KPI table.
+
+8. **GBFS.** Worth 20 seconds. Open <http://localhost:4000/gbfs/2.3/free_bike_status.json>
+   in a browser tab with **no login** — it is a public standards feed, so any
+   journey planner can consume this fleet. Then say what is *not* in it: only
+   `available` vehicles, because an in-use vehicle's position is a rider's live
+   location, and `bike_id` rotates hourly so nobody can follow one vehicle
+   across days.
+
+9. **Data.** The demand model, and the governance around it.
    - Headline tiles: the active model's MAE against the seasonal-naive baseline, and the skill
      ratio against design.md's 0.70 target.
    - The forecast chart shows predicted trips per 15-minute slot for one zone, with the 80%
@@ -167,6 +202,8 @@ conda activate micromobility && cd apps/ml && pytest -q && ruff check .
 | **Plan** says the routing service is unreachable | uvicorn not running | `npm run dev:ml`, or check the `ml` pane |
 | A run goes straight to **failed** | ML service down | Same fix — the error text on the run says which |
 | A run sits at **queued** | socket did not connect | It still finishes; the list polls every 1.5 s and will catch up |
+| **Admin** says "no rollups yet" | rollup never run | `npm run rollup` |
+| **Rebalancing** finds no moves | fleet is already balanced, or the km dial is too low | Raise "worth driving N km", or add vans |
 | **Data** shows no forecast | Model not trained, or no history | `npm run demand:backfill`, then **Retrain model** |
 | Everything is broken | | `git checkout master` — Sprint 1 alone, fully tested, Fleet screen works |
 
@@ -175,17 +212,28 @@ conda activate micromobility && cd apps/ml && pytest -q && ruff check .
 ## What to say about scope
 
 Built: **M01** users and access, **M02** traffic monitoring, **M03** vehicle management,
-**M04** route planning, **M05** demand prediction, **M06** simulation engine, **M11** basic KPIs,
-**M12** weather. Eight of sixteen modules — Sprints 1 to 4 complete.
+**M04** route planning, **M05** demand prediction, **M06** simulation engine, **M07** fleet
+optimisation, **M10** environmental analysis, **M11** analytics and reporting, **M12** weather,
+and the outbound half of **M15** smart-city integration. Eleven of sixteen.
 
 The count undersells it — those five include every piece of shared infrastructure the other
 eleven stand on: the migration system, spatial handling, auth and RBAC, the cache/jobs/event-bus
 adapters, the Socket.IO gateway, and the test harness.
 
-Remaining: fleet optimisation and analysis (Sprint 5), then notifications, billing, GBFS and
-emergency response (Sprint 6). M07 rebalancing has a placeholder in the simulator already — the
-greedy surplus-to-deficit mover behind the rebalancing lever — so Sprint 5 replaces an
-algorithm rather than building a subsystem.
+**Deliberately not built, and why** — each is recorded at the top of its section in
+`MODULES.md`, not left to look forgotten:
+
+| Module | Why it was skipped |
+|---|---|
+| **M08** parking & docking | A station registry plus a point-in-polygon check; teaches nothing the zone model does not, and nothing depends on it |
+| **M09** safety (partial) | Segment safety scoring feeds M04 routing and the simulator's incident model; kernel-density risk zones and telemetry fall-detection are not built |
+| **M13** notifications | The realtime seam already exists and carries simulation progress; what is missing is templates and delivery adapters |
+| **M14** payment & billing | No card data touches this system by design — a half-built billing path is a liability, not a demo |
+| **M16** emergency response | Depends on the half of M09 that is not built |
+
+If asked why these and not others: the ones built are the ones that make the
+system's argument — forecast, simulate, optimise, measure. The ones skipped are
+mostly CRUD over a schema that already exists.
 
 Honest framing if asked why it isn't finished: the foundation is disproportionately expensive
 and it is done. Sprint 3 onward adds features to a working system rather than building the
