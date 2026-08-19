@@ -12,11 +12,18 @@ import { existsSync, statSync } from 'node:fs';
 import path from 'node:path';
 
 const root = path.resolve(import.meta.dirname, '..');
-const src = path.join(root, 'docs', 'viva-run-of-show.html');
-const out = path.join(root, 'Viva-Run-of-Show.pdf');
 
-if (!existsSync(src)) {
-  console.error(`Source not found: ${src}`);
+/** Both documents render the same way; `npm run guide:pdf -- manual` picks one. */
+const DOCS = {
+  viva: { src: 'docs/viva-run-of-show.html', out: 'Viva-Run-of-Show.pdf' },
+  manual: { src: 'docs/user-manual.html', out: 'User-Manual.pdf' },
+};
+
+const which = process.argv[2];
+const targets = which ? [DOCS[which]] : Object.values(DOCS);
+
+if (targets.some((t) => !t)) {
+  console.error(`Unknown document "${which}". Use one of: ${Object.keys(DOCS).join(', ')}`);
   process.exit(1);
 }
 
@@ -49,22 +56,33 @@ if (!chrome) {
   process.exit(1);
 }
 
-// virtual-time-budget gives the Google Fonts stylesheet time to land; without
-// it the PDF renders in the fallback stack and the type looks wrong.
-execFileSync(
-  chrome,
-  [
-    '--headless=new',
-    '--disable-gpu',
-    '--no-sandbox',
-    '--no-pdf-header-footer',
-    '--run-all-compositor-stages-before-draw',
-    '--virtual-time-budget=20000',
-    `--print-to-pdf=${out}`,
-    `file://${src}`,
-  ],
-  { stdio: ['ignore', 'ignore', 'pipe'] },
-);
+for (const doc of targets) {
+  const src = path.join(root, doc.src);
+  const out = path.join(root, doc.out);
 
-const kb = Math.round(statSync(out).size / 1024);
-console.log(`Wrote ${path.relative(root, out)} (${kb} KB) using ${chrome}`);
+  if (!existsSync(src)) {
+    console.error(`Source not found: ${src}`);
+    process.exitCode = 1;
+    continue;
+  }
+
+  // virtual-time-budget gives the Google Fonts stylesheet time to land; without
+  // it the PDF renders in the fallback stack and the type looks wrong.
+  execFileSync(
+    chrome,
+    [
+      '--headless=new',
+      '--disable-gpu',
+      '--no-sandbox',
+      '--no-pdf-header-footer',
+      '--run-all-compositor-stages-before-draw',
+      '--virtual-time-budget=20000',
+      `--print-to-pdf=${out}`,
+      `file://${src}`,
+    ],
+    { stdio: ['ignore', 'ignore', 'pipe'] },
+  );
+
+  const kb = Math.round(statSync(out).size / 1024);
+  console.log(`Wrote ${doc.out} (${kb} KB) using ${chrome}`);
+}

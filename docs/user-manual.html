@@ -1,0 +1,998 @@
+<title>Micro Mobility User Manual</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<style>
+/* Palette inherited from the app's own tokens.css so the manual and the
+   product it documents read as one system. */
+:root {
+  --ground:#f4f7fb; --surface:#ffffff; --raised:#eaf0f8;
+  --line:#d3dded; --line-soft:#e4ebf5;
+  --text:#0d1424; --muted:#55668a;
+  --accent:#2c6fd6; --accent-dim:#dce8fb;
+  --gold:#8a5f0f;  --gold-dim:#f7eeda;
+  --ok:#17805a;    --ok-dim:#dcf2e8;
+  --danger:#c0272c;--danger-dim:#fbe3e4;
+  --scooter:#a15f00; --bike:#00706a; --ebike:#5b41c4; --ev:#2c6fd6;
+  --shadow:0 1px 2px rgba(13,20,36,.05),0 8px 24px rgba(13,20,36,.06);
+  --r-sm:5px; --r-md:9px; --r-lg:15px;
+  --font-display:'Archivo',system-ui,sans-serif;
+  --font-body:'Inter',system-ui,sans-serif;
+  --font-mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground:#070b14; --surface:#0d1424; --raised:#16203a;
+    --line:#223052; --line-soft:#18243f;
+    --text:#e6edf8; --muted:#8095b8;
+    --accent:#4d8df7; --accent-dim:#132443;
+    --gold:#d99b28;  --gold-dim:#2a2113;
+    --ok:#3dd68c;    --ok-dim:#10281f;
+    --danger:#e5484d;--danger-dim:#2c1417;
+    --scooter:#f2a20c; --bike:#00b3a4; --ebike:#7c5cff; --ev:#4d8df7;
+    --shadow:0 1px 0 rgba(255,255,255,.04),0 8px 24px rgba(0,0,0,.45);
+  }
+}
+:root[data-theme="dark"] {
+  --ground:#070b14; --surface:#0d1424; --raised:#16203a;
+  --line:#223052; --line-soft:#18243f;
+  --text:#e6edf8; --muted:#8095b8;
+  --accent:#4d8df7; --accent-dim:#132443;
+  --gold:#d99b28;  --gold-dim:#2a2113;
+  --ok:#3dd68c;    --ok-dim:#10281f;
+  --danger:#e5484d;--danger-dim:#2c1417;
+  --scooter:#f2a20c; --bike:#00b3a4; --ebike:#7c5cff; --ev:#4d8df7;
+  --shadow:0 1px 0 rgba(255,255,255,.04),0 8px 24px rgba(0,0,0,.45);
+}
+
+* { box-sizing:border-box; }
+body{margin:0;background:var(--ground);color:var(--text);font-family:var(--font-body);
+     font-size:16px;line-height:1.62;-webkit-font-smoothing:antialiased;}
+.wrap{max-width:880px;margin:0 auto;padding:40px 20px 96px;display:flex;flex-direction:column;gap:40px;}
+
+/* masthead */
+.masthead{display:flex;flex-direction:column;gap:12px;}
+.kicker{font-family:var(--font-mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);}
+h1{font-family:var(--font-display);font-weight:700;font-size:clamp(32px,6.5vw,50px);
+   line-height:1.03;letter-spacing:-.028em;margin:0;text-wrap:balance;}
+.standfirst{font-size:17px;color:var(--muted);max-width:60ch;margin:0;}
+
+/* section furniture */
+section{display:flex;flex-direction:column;gap:16px;}
+h2{font-family:var(--font-display);font-weight:700;font-size:26px;letter-spacing:-.02em;
+   margin:0;padding-bottom:9px;border-bottom:2px solid var(--text);text-wrap:balance;}
+h3{font-family:var(--font-display);font-weight:600;font-size:18px;letter-spacing:-.012em;margin:14px 0 0;}
+h4{font-family:var(--font-display);font-weight:600;font-size:15px;margin:8px 0 0;color:var(--muted);}
+p{margin:0;max-width:68ch;}
+.lead{color:var(--muted);}
+ul,ol{margin:0;padding-left:21px;display:flex;flex-direction:column;gap:7px;}
+li{max-width:64ch;}
+
+/* screen card — the manual's main structural unit */
+.screen{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);
+        box-shadow:var(--shadow);overflow:hidden;}
+.screen-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px;padding:15px 18px;
+             border-bottom:1px solid var(--line-soft);background:var(--raised);}
+.screen-name{font-family:var(--font-display);font-weight:700;font-size:19px;letter-spacing:-.015em;}
+.screen-path{font-family:var(--font-mono);font-size:12px;color:var(--muted);}
+.who{margin-left:auto;font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;
+     text-transform:uppercase;color:var(--muted);border:1px solid var(--line);
+     border-radius:999px;padding:3px 9px;white-space:nowrap;}
+.screen-body{padding:16px 18px;display:flex;flex-direction:column;gap:13px;}
+
+/* numbered step list */
+ol.steps{counter-reset:step;list-style:none;padding-left:0;gap:10px;}
+ol.steps > li{counter-increment:step;position:relative;padding-left:34px;}
+ol.steps > li::before{content:counter(step);position:absolute;left:0;top:1px;
+  width:23px;height:23px;border-radius:50%;background:var(--accent);color:#fff;
+  font:600 12px/23px var(--font-mono);text-align:center;}
+
+/* callouts */
+.note,.warn,.tip{border-left:3px solid;padding:11px 14px;border-radius:0 var(--r-sm) var(--r-sm) 0;font-size:15px;}
+.note{border-color:var(--accent);background:var(--accent-dim);}
+.warn{border-color:var(--danger);background:var(--danger-dim);}
+.tip {border-color:var(--gold);background:var(--gold-dim);}
+.note::before,.warn::before,.tip::before{display:block;font-family:var(--font-mono);
+  font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:4px;}
+.note::before{content:"What this means";color:var(--accent);}
+.warn::before{content:"Watch out";color:var(--danger);}
+.tip::before {content:"Tip";color:var(--gold);}
+
+/* code */
+pre{margin:0;background:var(--raised);border:1px solid var(--line);border-radius:var(--r-md);
+    padding:12px 15px;overflow-x:auto;font-family:var(--font-mono);font-size:13.5px;line-height:1.65;}
+pre .c{color:var(--muted);}
+code{font-family:var(--font-mono);font-size:.88em;background:var(--raised);
+     border:1px solid var(--line-soft);border-radius:var(--r-sm);padding:1px 5px;}
+
+/* tables */
+.scroller{overflow-x:auto;border-radius:var(--r-md);border:1px solid var(--line);background:var(--surface);}
+table{border-collapse:collapse;width:100%;min-width:460px;font-size:14.5px;}
+th{text-align:left;font-family:var(--font-mono);font-size:11px;letter-spacing:.09em;
+   text-transform:uppercase;color:var(--muted);font-weight:500;padding:10px 13px;
+   border-bottom:1px solid var(--line);background:var(--raised);white-space:nowrap;}
+td{padding:10px 13px;border-bottom:1px solid var(--line-soft);vertical-align:top;}
+tr:last-child td{border-bottom:none;}
+td.key{font-weight:600;white-space:nowrap;}
+td.num,th.num{font-family:var(--font-mono);font-variant-numeric:tabular-nums;white-space:nowrap;}
+
+/* mode dot, matching the app's legend */
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;vertical-align:baseline;}
+.d-scooter{background:var(--scooter);} .d-bike{background:var(--bike);}
+.d-ebike{background:var(--ebike);}     .d-ev{background:var(--ev);}
+
+/* contents */
+.toc{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);
+     padding:18px;box-shadow:var(--shadow);}
+.toc ol{list-style:none;padding-left:0;gap:6px;}
+.toc a{color:var(--text);text-decoration:none;display:flex;gap:10px;align-items:baseline;}
+.toc a:hover{color:var(--accent);}
+.toc .n{font-family:var(--font-mono);font-size:12px;color:var(--muted);min-width:22px;}
+
+a{color:var(--accent);text-underline-offset:2px;}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:var(--r-sm);}
+.footnote{font-size:13.5px;color:var(--muted);max-width:68ch;}
+hr.rule{border:none;border-top:1px solid var(--line);margin:0;}
+
+/* ── PRINT / PDF ────────────────────────────────────────────
+   Forced to light at :root:root:root (0,3,0) so it beats the
+   dark :root:not([data-theme="light"]) rule (0,2,0), which
+   would otherwise win and produce a black, ink-hungry PDF. */
+@media print {
+  :root:root:root{
+    --ground:#ffffff; --surface:#ffffff; --raised:#f2f6fb;
+    --line:#c3d0e2; --line-soft:#dde5f0;
+    --text:#0d1424; --muted:#4c5c7d;
+    --accent:#1f5cba; --accent-dim:#eaf1fc;
+    --gold:#7a5209;  --gold-dim:#faf3e4;
+    --ok:#12674a;    --ok-dim:#e6f5ee;
+    --danger:#a81f24;--danger-dim:#fdeced;
+    --shadow:none;
+  }
+  @page{size:A4;margin:15mm 14mm 16mm;}
+  body{font-size:10.5pt;line-height:1.5;}
+  .wrap{max-width:none;padding:0;gap:20px;}
+  h1{font-size:29pt;} h2{font-size:15pt;} h3{font-size:12pt;} h4{font-size:10.5pt;}
+  .standfirst{font-size:11pt;}
+  /* Small units stay whole; screen cards may flow, or every tall one bounces
+     to a fresh page and wastes a third of the paper. */
+  .note,.warn,.tip,.toc,tr{break-inside:avoid;page-break-inside:avoid;}
+  .screen{break-inside:auto;}
+  .screen-head{break-after:avoid;page-break-after:avoid;}
+  h2,h3,h4{break-after:avoid;page-break-after:avoid;}
+  thead{display:table-header-group;}
+  .scroller{overflow:visible;} table{min-width:0;font-size:9.5pt;}
+  th,td{padding:6px 9px;} pre{font-size:9pt;padding:9px 11px;}
+  a{color:var(--text);text-decoration:none;}
+  .toc{display:none;}
+}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important;}}
+</style>
+
+<div class="wrap">
+
+<header class="masthead">
+  <div class="kicker">AI Urban Micro Mobility Simulator · Dept. of CSE, AITM Belagavi</div>
+  <h1>User Manual</h1>
+  <p class="standfirst">How to run the application and use every screen in it — written for someone opening it for the first time. No prior knowledge of the project is assumed.</p>
+</header>
+
+<nav class="toc">
+  <ol>
+    <li><a href="#about"><span class="n">1</span> What this application is</a></li>
+    <li><a href="#start"><span class="n">2</span> Starting the application</a></li>
+    <li><a href="#accounts"><span class="n">3</span> Accounts, sign-up and roles</a></li>
+    <li><a href="#interface"><span class="n">4</span> Finding your way around</a></li>
+    <li><a href="#live"><span class="n">5</span> Live — the traffic map</a></li>
+    <li><a href="#plan"><span class="n">6</span> Plan — your journey</a></li>
+    <li><a href="#sim"><span class="n">7</span> Sim — testing a policy</a></li>
+    <li><a href="#fleet"><span class="n">8</span> Fleet — vehicles and rebalancing</a></li>
+    <li><a href="#data"><span class="n">9</span> Data — the prediction model</a></li>
+    <li><a href="#admin"><span class="n">10</span> Admin — analytics and charging</a></li>
+    <li><a href="#gbfs"><span class="n">11</span> The public data feed</a></li>
+    <li><a href="#tasks"><span class="n">12</span> Common tasks, step by step</a></li>
+    <li><a href="#trouble"><span class="n">13</span> When something goes wrong</a></li>
+    <li><a href="#glossary"><span class="n">14</span> Glossary</a></li>
+    <li><a href="#scope"><span class="n">15</span> What the application does not do</a></li>
+  </ol>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<section id="about">
+  <h2>1 · What this application is</h2>
+
+  <p>Cities are filling up with e-scooters, shared bicycles and e-bikes. Somebody has to decide where those vehicles should be, whether a new bike lane is worth building, and what happens to the city when it rains. Today those decisions are usually made on intuition and tested by actually building the thing.</p>
+
+  <p>This application is <strong>a virtual copy of Belagavi</strong> where you can test a decision before anything is built. It has four jobs:</p>
+
+  <div class="scroller">
+    <table>
+      <thead><tr><th>It does this</th><th>Which means</th><th>Where you see it</th></tr></thead>
+      <tbody>
+        <tr><td class="key">Monitors</td><td>Shows live traffic congestion on the real street network</td><td>Live</td></tr>
+        <tr><td class="key">Predicts</td><td>Forecasts how many trips each area will need, using machine learning</td><td>Data</td></tr>
+        <tr><td class="key">Plans</td><td>Finds routes between two points — fastest, safest or greenest</td><td>Plan</td></tr>
+        <tr><td class="key">Simulates</td><td>Runs a whole simulated day under a policy you choose, and measures it</td><td>Sim</td></tr>
+        <tr><td class="key">Optimises</td><td>Works out where vehicles should be moved, and produces crew tasks</td><td>Fleet</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    The street map is <strong>real</strong> — 9,212 actual road segments imported from OpenStreetMap, covering 832 km of Belagavi. The trips and vehicle data are <strong>synthetic</strong>, generated with realistic daily and weekly patterns, because real rider data is personal information the project does not have.
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<section id="start">
+  <h2>2 · Starting the application</h2>
+
+  <p class="lead">Three services have to run together: the web interface, the API, and a Python service that does the mathematics. One command starts all of them.</p>
+
+  <h3>Every time you want to use it</h3>
+<pre><span class="c"># from the project folder</span>
+npm run demo:check   <span class="c"># checks everything is ready, and says how to fix it if not</span>
+npm run demo         <span class="c"># starts all services</span></pre>
+
+  <p>Then open <strong>http://localhost:5173</strong> in your browser. Press <strong>Ctrl-C</strong> in the terminal to stop everything.</p>
+
+  <h3>What each port is</h3>
+  <div class="scroller">
+    <table>
+      <thead><tr><th class="num">Port</th><th>Service</th><th>Do you open it?</th></tr></thead>
+      <tbody>
+        <tr><td class="num">5173</td><td>The web interface</td><td>Yes — this is the application</td></tr>
+        <tr><td class="num">4000</td><td>API (data, accounts, rules)</td><td>No, except the public feed</td></tr>
+        <tr><td class="num">8000</td><td>Python service (routing, forecasting, simulation)</td><td>No — the browser never talks to it</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="warn">
+    If <code>npm run demo</code> fails with <strong>EADDRINUSE</strong>, an old copy is still running. Free the ports and try again:
+    <br><code>fuser -k 4000/tcp 5173/tcp 8000/tcp</code>
+  </div>
+
+  <h3>First-time setup only</h3>
+  <p>If the database has never been prepared on this machine, run these once, in order:</p>
+<pre>npm install
+conda activate micromobility &amp;&amp; pip install -r apps/ml/requirements.txt
+npm run db:create &amp;&amp; npm run db:migrate
+npm run db:seed          <span class="c"># loads the demo city — PRINTS PASSWORDS, copy them</span>
+npm run demand:backfill  <span class="c"># six weeks of trip history</span>
+npm run rollup           <span class="c"># builds the analytics tables</span></pre>
+
+  <div class="warn">
+    <code>npm run db:seed</code> generates <strong>new passwords</strong> for the demo accounts each time it creates them. Copy what it prints. Do not run it just before a demonstration — the passwords you wrote down will stop working.
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<section id="accounts">
+  <h2>3 · Accounts, sign-up and roles</h2>
+
+  <h3>Creating your own account</h3>
+  <ol class="steps">
+    <li>Open <strong>http://localhost:5173</strong>. You land on the sign-in page.</li>
+    <li>Click <strong>Create an account</strong> at the bottom.</li>
+    <li>Fill in your name, email, and a password of <strong>at least 10 characters containing a letter and a digit</strong>. Mobile number is optional.</li>
+    <li>Press <strong>Create account &amp; view the map</strong>.</li>
+    <li>You are signed in immediately and taken to the Live map. You do not need to log in again.</li>
+  </ol>
+
+  <div class="note">
+    A new account is a <strong>commuter</strong>. Commuters can view the live map and plan journeys. The planning and operations screens need a role that an administrator grants — so for exploring the whole application, use the admin account below.
+  </div>
+
+  <h3>The five demo accounts</h3>
+  <p>These are created by <code>npm run db:seed</code>. If yours differ, use what the seed printed.</p>
+
+  <div class="scroller">
+    <table>
+      <thead><tr><th>Role</th><th>Email</th><th>Password</th><th>Use it for</th></tr></thead>
+      <tbody>
+        <tr><td class="key">admin</td><td class="num">admin@belagavi.local</td><td class="num">eQwwwt689EpL</td><td>Everything — start here</td></tr>
+        <tr><td class="key">planner</td><td class="num">planner@belagavi.local</td><td class="num">NhmHQJFEvGd0</td><td>Scenarios, rebalancing, charging</td></tr>
+        <tr><td class="key">operator</td><td class="num">operator@belagavi.local</td><td class="num">k1ENW4CMkiTw</td><td>Fleet and crew tasks</td></tr>
+        <tr><td class="key">analyst</td><td class="num">analyst@belagavi.local</td><td class="num">1MsgfscGgAXp</td><td>Reports and the model</td></tr>
+        <tr><td class="key">commuter</td><td class="num">commuter@belagavi.local</td><td class="num">_jAA5bSnau6Y</td><td>The rider's view</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Who can do what</h3>
+  <div class="scroller">
+    <table>
+      <thead><tr><th>Action</th><th>commuter</th><th>operator</th><th>planner</th><th>admin</th></tr></thead>
+      <tbody>
+        <tr><td>View Live, Plan, Data</td><td>yes</td><td>yes</td><td>yes</td><td>yes</td></tr>
+        <tr><td>View Fleet and Sim</td><td>yes</td><td>yes</td><td>yes</td><td>yes</td></tr>
+        <tr><td>Create and run scenarios</td><td>no</td><td>no</td><td>yes</td><td>yes</td></tr>
+        <tr><td>Solve rebalancing, update crew tasks</td><td>no</td><td>yes</td><td>yes</td><td>yes</td></tr>
+        <tr><td>Add or remove charging stations</td><td>no</td><td>no</td><td>yes</td><td>yes</td></tr>
+        <tr><td>Retrain the prediction model</td><td>no</td><td>no</td><td>no</td><td>yes</td></tr>
+        <tr><td colspan="5" style="color:var(--muted);font-size:13px">Analysts can also retrain the model — see section 9.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p class="footnote">If you try something your role does not allow, the application says so rather than failing silently. That is the rule working, not a bug.</p>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<section id="interface">
+  <h2>4 · Finding your way around</h2>
+
+  <h3>The top bar</h3>
+  <ul>
+    <li><strong>Left</strong> — the application name.</li>
+    <li><strong>Right</strong> — current city weather (temperature and a symbol), your name, your role, and <strong>Sign out</strong>.</li>
+  </ul>
+  <p>Weather is not decoration. Rain reduces how many people ride, and the simulator uses it as an input.</p>
+
+  <h3>The left rail — six screens</h3>
+  <div class="scroller">
+    <table>
+      <thead><tr><th>Icon label</th><th>What it is for</th></tr></thead>
+      <tbody>
+        <tr><td class="key">Live</td><td>The city right now — traffic congestion on real streets</td></tr>
+        <tr><td class="key">Plan</td><td>Plan a journey from one point to another</td></tr>
+        <tr><td class="key">Sim</td><td>Test a policy on a simulated day</td></tr>
+        <tr><td class="key">Fleet</td><td>The vehicle list, and the rebalancing planner</td></tr>
+        <tr><td class="key">Data</td><td>The demand prediction model and its accuracy</td></tr>
+        <tr><td class="key">Admin</td><td>City analytics, and charging station management</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Four things every screen does</h3>
+  <p>Every screen handles four situations explicitly, so you are never left looking at a blank page wondering:</p>
+  <ul>
+    <li><strong>Loading</strong> — grey placeholder shapes while data arrives.</li>
+    <li><strong>Empty</strong> — a message telling you what to do to get data, not just "no data".</li>
+    <li><strong>Error</strong> — what went wrong, with a <strong>Retry</strong> button.</li>
+    <li><strong>Ready</strong> — the actual content.</li>
+  </ul>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<section id="live">
+  <h2>5 · Live — the traffic map</h2>
+
+  <div class="screen">
+    <div class="screen-head">
+      <span class="screen-name">Live</span>
+      <span class="screen-path">/live</span>
+      <span class="who">Everyone</span>
+    </div>
+    <div class="screen-body">
+      <p>The city as it is right now. Real Belagavi streets, with traffic congestion painted on the main roads.</p>
+
+      <h4>What you are looking at</h4>
+      <ul>
+        <li><strong>The base map</strong> — real streets, from OpenStreetMap. Zoom in far enough and street names appear.</li>
+        <li><strong>Coloured lines</strong> — congestion on the 1,736 monitored main roads. Side streets stay uncoloured, exactly as real traffic services show them.</li>
+        <li><strong>Dashed outlines</strong> — the eight city zones, with their names.</li>
+      </ul>
+
+      <h4>Reading the colours</h4>
+      <p>The scale runs from <span style="color:var(--ok);font-weight:600">free flow</span> through yellow and orange to <span style="color:var(--danger);font-weight:600">heavy or jammed</span>. The legend on screen shows the full ramp.</p>
+
+      <h4>Panels on this screen</h4>
+      <div class="scroller">
+        <table>
+          <thead><tr><th>Label</th><th>What it tells you</th></tr></thead>
+          <tbody>
+            <tr><td class="key">City congestion</td><td>Average congestion across every monitored road, 0 to 1</td></tr>
+            <tr><td class="key">Corridors monitored</td><td>How many road segments are reporting traffic</td></tr>
+            <tr><td class="key">Mean speed</td><td>Average speed on the selected road</td></tr>
+            <tr><td class="key">Length</td><td>How long the selected road segment is</td></tr>
+            <tr><td class="key">Congestion</td><td>Congestion on the selected road, as a percentage</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h4>How to use it</h4>
+      <ol class="steps">
+        <li>Drag to pan; scroll or use <strong>+ / −</strong> to zoom.</li>
+        <li><strong>Click any coloured road</strong> to select it. Its name, speed, length and congestion appear.</li>
+        <li>Watch for a few seconds — colours change on their own as new traffic readings arrive, roughly every three seconds.</li>
+      </ol>
+
+      <div class="tip">
+        There is an <strong>Offline map</strong> toggle. The normal map downloads street tiles from the internet; if you have no connection the tiles will not load. Switch to the offline map and you still get zones and congestion, drawn without any downloaded imagery.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<section id="plan">
+  <h2>6 · Plan — your journey</h2>
+
+  <div class="screen">
+    <div class="screen-head">
+      <span class="screen-name">Plan</span>
+      <span class="screen-path">/plan</span>
+      <span class="who">Everyone</span>
+    </div>
+    <div class="screen-body">
+      <p>Pick where you are and where you are going. The application finds three different routes, shows which vehicles you could take, and points out charging stations along the way.</p>
+
+      <h4>The layout</h4>
+      <p>Controls on the left, map on the right. On a narrow screen or phone the controls sit above the map.</p>
+
+      <h4>Step by step</h4>
+      <ol class="steps">
+        <li><strong>Set your pickup.</strong> Click anywhere on the map. A blue pin marked <strong>A</strong> drops there. The banner at the top of the map tells you what the next click will do.</li>
+        <li><strong>Set your destination.</strong> Click again. A gold pin marked <strong>B</strong> drops there.</li>
+        <li><strong>Routes appear automatically.</strong> There is no "search" button to find — as soon as both pins exist, three routes are calculated.</li>
+        <li><strong>Choose a route</strong> by clicking one of the three cards. The map redraws it in blue; the other two stay as faint grey lines so you can see they take different streets.</li>
+        <li><strong>Change your vehicle</strong> using the <strong>Vehicle</strong> dropdown if you want. Routes recalculate for the new vehicle.</li>
+      </ol>
+
+      <h4>The two pin rows</h4>
+      <p>Each row shows a coloured letter, the label (<strong>Pickup</strong> or <strong>Destination</strong>), and the coordinates once set. Before you set one it reads <em>not set — click the map</em>. Once set, a <strong>Clear</strong> button removes it. The highlighted row is the one your next click will fill.</p>
+
+      <h4>Two shortcuts</h4>
+      <div class="scroller">
+        <table>
+          <thead><tr><th>Button</th><th>What it does</th></tr></thead>
+          <tbody>
+            <tr><td class="key">Use my location</td><td>Asks the browser for your GPS position and uses it as pickup</td></tr>
+            <tr><td class="key">Sample trip</td><td>Instantly drops both pins on two city zones — the quickest way to see a result</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="warn">
+        <strong>Use my location usually fails on localhost, and that is normal.</strong> Browsers only allow location access on secure (HTTPS) pages, and <code>http://localhost</code> is not one. The screen tells you this and asks you to click the map instead. Use <strong>Sample trip</strong> if you want a result immediately.
+      </div>
+
+      <h4>The three routes</h4>
+      <div class="scroller">
+        <table>
+          <thead><tr><th>Route</th><th>What it optimises for</th></tr></thead>
+          <tbody>
+            <tr><td class="key">fastest</td><td>Time. Will use busy roads and go over hills.</td></tr>
+            <tr><td class="key">safest</td><td>Lit streets, bike lanes and quieter roads. Usually takes longer.</td></tr>
+            <tr><td class="key">greenest</td><td>Least climbing and least traffic, to save battery.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Each card shows the journey time and distance. Click one to expand it into four measures:</p>
+
+      <div class="scroller">
+        <table>
+          <thead><tr><th>Measure</th><th>Meaning</th><th>Better when</th></tr></thead>
+          <tbody>
+            <tr><td class="key">ETA</td><td>Estimated journey time in minutes</td><td>Lower</td></tr>
+            <tr><td class="key">Distance</td><td>Length of the route in kilometres</td><td>Lower</td></tr>
+            <tr><td class="key">Risk</td><td>Safety score out of 100 — higher means riskier</td><td>Lower</td></tr>
+            <tr><td class="key">Energy</td><td>Battery used, in watt-hours</td><td>Lower</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="note">
+        A measure shown in <span style="color:var(--ok);font-weight:600">green</span> means this route is the best of the three on that measure. This is the point of the screen: the fastest route is rarely also the safest, and the trade-off is what you are choosing between.
+      </div>
+
+      <h4>Available near your pickup</h4>
+      <p>Vehicles you could actually walk to, within 1.2 km of pin A, nearest first. Each row shows:</p>
+      <ul>
+        <li>A <strong>coloured dot</strong> for the vehicle type — <span class="dot d-scooter"></span>scooter, <span class="dot d-bike"></span>bicycle, <span class="dot d-ebike"></span>e-bike, <span class="dot d-ev"></span>shared EV.</li>
+        <li>Its <strong>reference code</strong> and how far you would walk.</li>
+        <li>Its <strong>battery percentage</strong>. Below 20% it turns red. Hover it to see the remaining range in kilometres.</li>
+      </ul>
+      <p>Only vehicles marked <strong>available</strong> appear. One that is already booked, being ridden, or in the workshop is not shown, because you could not take it.</p>
+
+      <h4>Charging on the way</h4>
+      <p>Charging stations within 700 m of the route you selected, nearest first, with the number of charge points, the power in kW, and the distance from your route. Choosing a different route re-checks — the safest route may pass different stations than the fastest.</p>
+      <p>If there are none, the screen says so and tells you a planner can add one from the Admin screen.</p>
+
+      <div class="note">
+        You may see a line saying your pins were <strong>snapped</strong> up to some distance to the nearest road. Routes must start and end on an actual street, so if you click on a rooftop or a field, the application moves your pin to the closest road and tells you how far it moved. It is not losing your input — it is being honest about adjusting it.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<section id="sim">
+  <h2>7 · Sim — testing a policy</h2>
+
+  <div class="screen">
+    <div class="screen-head">
+      <span class="screen-name">Sim</span>
+      <span class="screen-path">/sim</span>
+      <span class="who">View: all · Run: planner, admin</span>
+    </div>
+    <div class="screen-body">
+      <p>This is the heart of the project. A <strong>scenario</strong> is a set of choices about the city — how many vehicles, what the weather is, whether there are bike lanes. Running one simulates a whole day and measures what happened.</p>
+
+      <h4>The four scenarios that come with it</h4>
+      <div class="scroller">
+        <table>
+          <thead><tr><th>Scenario</th><th>What it changes</th></tr></thead>
+          <tbody>
+            <tr><td class="key">Baseline — typical weekday</td><td>Nothing. The city as it runs today.</td></tr>
+            <tr><td class="key">Protected bike lanes</td><td>Segregated bike infrastructure in the four central zones</td></tr>
+            <tr><td class="key">Overnight rebalancing</td><td>Vans redistribute idle vehicles every 45 minutes</td></tr>
+            <tr><td class="key">Monsoon day</td><td>12 mm of rain across the city</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="note">
+        Each scenario changes <strong>exactly one thing</strong> from the baseline. That is deliberate — it means any difference in the results is caused by that one change and nothing else. This is a controlled experiment, the same idea as a science practical.
+      </div>
+
+      <h4>Running one</h4>
+      <ol class="steps">
+        <li>Click a scenario in the left column. Its details fill the right side.</li>
+        <li>Press <strong>Run simulation</strong>.</li>
+        <li>A progress bar appears. A full simulated day takes about a fifth of a second, so it may finish before you finish reading this.</li>
+        <li>Results appear as six tiles.</li>
+      </ol>
+
+      <h4>The six result tiles</h4>
+      <div class="scroller">
+        <table>
+          <thead><tr><th>Tile</th><th>Meaning</th></tr></thead>
+          <tbody>
+            <tr><td class="key">Trips served</td><td>Journeys that found a vehicle and completed</td></tr>
+            <tr><td class="key">Unmet demand</td><td>People who wanted to travel but could not</td></tr>
+            <tr><td class="key">Service rate</td><td>Percentage of demand that was served</td></tr>
+            <tr><td class="key">Mean wait</td><td>Average seconds spent walking to a vehicle</td></tr>
+            <tr><td class="key">Utilisation</td><td>Percentage of time the fleet was actually in use</td></tr>
+            <tr><td class="key">Incidents / 1000 km</td><td>Expected safety incidents per thousand kilometres</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h4>Why demand went unmet</h4>
+      <p>Underneath the tiles is a line explaining the <em>reason</em>. On the baseline scenario every unmet trip reads <strong>no charged vehicle</strong> — not "no vehicle nearby". The vehicles exist; their batteries are flat.</p>
+
+      <div class="note">
+        This is the most valuable thing the simulator produces. The answer it gives a planner is <strong>build charging infrastructure</strong>, not <strong>buy more scooters</strong>. Nobody programmed that conclusion — it emerged from the simulation.
+      </div>
+
+      <h4>Demand through the day</h4>
+      <p>A chart of trips served (blue) and unmet demand (gold) across 24 hours. The two commuter peaks — morning and evening — are clearly visible.</p>
+
+      <h4>Comparing two scenarios</h4>
+      <ol class="steps">
+        <li>Run at least two scenarios so there is something to compare.</li>
+        <li>Select the scenario you want to examine.</li>
+        <li>In <strong>Compare against</strong>, choose another scenario.</li>
+        <li>A table appears: each measure, its value in both runs, and the change.</li>
+      </ol>
+
+      <p>Changes are labelled <span style="color:var(--ok);font-weight:600">better</span> or <span style="color:var(--danger);font-weight:600">worse</span> with an arrow, not just coloured — so the meaning survives a black-and-white printout or a colourblind reader.</p>
+
+      <div class="tip">
+        A negative number is not automatically bad. Fewer unmet trips is an improvement even though the number went down. The word beside it tells you which way to read it.
+      </div>
+
+      <h4>The seed line</h4>
+      <p>Under the results you will see something like <em>seed 42 · 199 ms · same seed reproduces this run exactly</em>. The seed is the starting point for all the randomness in the simulation. Same seed plus same scenario always gives identical results — which is what makes the simulation evidence rather than an opinion.</p>
+
+      <h4>Creating your own scenario</h4>
+      <ol class="steps">
+        <li>Press <strong>New</strong> at the top of the scenario list. (Planner or admin only.)</li>
+        <li>Give it a name and, ideally, a sentence saying what you are testing.</li>
+        <li>Set the window — how many hours, and what time of day it starts.</li>
+        <li>Set the fleet — how many scooters, e-bikes and bicycles.</li>
+        <li>Set the weather — rainfall in mm and temperature.</li>
+        <li>Set the policy levers: which zones get bike lanes, which are closed, a demand multiplier, and whether rebalancing runs.</li>
+        <li>Press <strong>Create scenario</strong>, then run it.</li>
+      </ol>
+
+      <div class="tip">
+        Change <strong>one thing</strong> from the baseline. If you change the fleet and the weather at once, you will not know which caused the difference.
+      </div>
+
+      <div class="warn">
+        A short run that starts at midnight covers the quietest hours of the day and produces almost no trips. If you choose 6 hours, set the start to <strong>07:00</strong> or <strong>17:00</strong> so it covers a rush hour.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<section id="fleet">
+  <h2>8 · Fleet — vehicles and rebalancing</h2>
+
+  <div class="screen">
+    <div class="screen-head">
+      <span class="screen-name">Fleet</span>
+      <span class="screen-path">/fleet</span>
+      <span class="who">View: all · Solve: operator+</span>
+    </div>
+    <div class="screen-body">
+      <p>Two tabs at the top: <strong>Vehicles</strong> and <strong>Rebalancing</strong>.</p>
+
+      <h3>Vehicles tab</h3>
+      <p>A table of every vehicle in the city. Columns:</p>
+      <div class="scroller">
+        <table>
+          <thead><tr><th>Column</th><th>Meaning</th></tr></thead>
+          <tbody>
+            <tr><td class="key">Ref</td><td>The vehicle's reference code, e.g. <code>BGM-MOBI-0013</code></td></tr>
+            <tr><td class="key">Mode</td><td>Type, with its colour dot</td></tr>
+            <tr><td class="key">Operator</td><td>Which company owns it</td></tr>
+            <tr><td class="key">Home zone</td><td>Which part of the city it belongs to</td></tr>
+            <tr><td class="key">Status</td><td>What it is doing right now</td></tr>
+            <tr><td class="key">Battery</td><td>Charge level as a bar</td></tr>
+            <tr><td class="key">Last seen</td><td>When it last reported its position</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h4>The seven statuses</h4>
+      <div class="scroller">
+        <table>
+          <thead><tr><th>Status</th><th>Meaning</th></tr></thead>
+          <tbody>
+            <tr><td class="key">Available</td><td>Parked and ready to ride</td></tr>
+            <tr><td class="key">Reserved</td><td>Booked by someone, not yet collected</td></tr>
+            <tr><td class="key">In use</td><td>Being ridden right now</td></tr>
+            <tr><td class="key">Returning</td><td>Being brought back by a crew</td></tr>
+            <tr><td class="key">Charging</td><td>Plugged in</td></tr>
+            <tr><td class="key">Maintenance</td><td>In the workshop</td></tr>
+            <tr><td class="key">Retired</td><td>Permanently out of service</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Use the <strong>Status</strong> and <strong>Mode</strong> dropdowns to filter, and the pager at the bottom to move through pages. Filter to something with no matches and you get an empty state with a <strong>Clear filters</strong> button rather than a blank table.</p>
+
+      <h3>Rebalancing tab</h3>
+      <p>Overnight, vehicles pile up where journeys <em>end</em> — the city centre — and drain away from residential areas. This tab decides which vehicles to move where.</p>
+
+      <h4>The supply table</h4>
+      <div class="scroller">
+        <table>
+          <thead><tr><th>Column</th><th>Meaning</th></tr></thead>
+          <tbody>
+            <tr><td class="key">Zone</td><td>Area of the city</td></tr>
+            <tr><td class="key">Have</td><td>Vehicles available there now</td></tr>
+            <tr><td class="key">Target</td><td>How many it <em>should</em> have, based on forecast demand</td></tr>
+            <tr><td class="key">Gap</td><td>Have minus Target. Green means spare, red means short.</td></tr>
+            <tr><td class="key">Short ← → Spare</td><td>The same gap drawn as a bar, for scanning quickly</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="note">
+        Target is each zone's <strong>share of the vehicles that actually exist</strong>, weighted by predicted demand — not a wish list. Rebalancing cannot create vehicles; it only decides where the ones you have should stand. That is why the gaps always add up to roughly zero.
+      </div>
+
+      <h4>The controls</h4>
+      <div class="scroller">
+        <table>
+          <thead><tr><th>Control</th><th>What it does</th></tr></thead>
+          <tbody>
+            <tr><td class="key">Vans</td><td>How many rebalancing vans are available</td></tr>
+            <tr><td class="key">Capacity each</td><td>How many vehicles fit in one van</td></tr>
+            <tr><td class="key">Worth driving N km</td><td>How far a van will drive to place one vehicle</td></tr>
+            <tr><td class="key">Demand horizon</td><td>How far ahead to forecast — 1 to 8 hours</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h4>Solving</h4>
+      <ol class="steps">
+        <li>Adjust the controls if you want.</li>
+        <li>Press <strong>Solve rebalancing</strong>.</li>
+        <li>A plan card appears showing <strong>imbalance closed</strong> and <strong>van kilometres</strong> — the benefit and its cost.</li>
+        <li>Below it, the crew tasks: move N vehicles from one zone to another, longest journey first.</li>
+        <li>Mark each task <strong>Done</strong> or <strong>Skip</strong> as crews work through it. When none are left outstanding, the plan marks itself completed.</li>
+      </ol>
+
+      <div class="tip">
+        Try dragging <strong>worth driving N km</strong> down to 1 and solving again. The plan empties, and the app explains why: no move is worth making at that value. This is the real operational trade-off — driving a scooter across town for one extra journey is not work worth doing.
+      </div>
+
+      <div class="note">
+        The tasks are ordered <strong>longest journey first</strong> on purpose. If a shift is cut short, the moves left undone are the ones that were hardest to justify anyway.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<section id="data">
+  <h2>9 · Data — the prediction model</h2>
+
+  <div class="screen">
+    <div class="screen-head">
+      <span class="screen-name">Data</span>
+      <span class="screen-path">/data</span>
+      <span class="who">View: all · Retrain: admin, analyst</span>
+    </div>
+    <div class="screen-body">
+      <p>This screen is the machine learning part of the project: a model that predicts how many trips each zone will need, in 15-minute slots.</p>
+
+      <h4>Headline figures</h4>
+      <div class="scroller">
+        <table>
+          <thead><tr><th>Figure</th><th>Meaning</th><th>Current</th></tr></thead>
+          <tbody>
+            <tr><td class="key">MAE</td><td>Mean Absolute Error — average size of the model's mistakes. Lower is better.</td><td class="num">0.242</td></tr>
+            <tr><td class="key">Baseline MAE</td><td>Error of a simple rule: "same as this time last week"</td><td class="num">0.610</td></tr>
+            <tr><td class="key">Skill ratio</td><td>Model error ÷ baseline error. Below 1 means the model beats the simple rule.</td><td class="num">0.397</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="note">
+        A skill ratio of <strong>0.397</strong> means the model's errors are about 40% the size of the simple rule's. The design document set a target of 0.70 or better, so this comfortably passes. Comparing against a baseline matters: a model with a small error is only impressive if guessing would have done worse.
+      </div>
+
+      <h4>Forecast — one zone at a time</h4>
+      <p>Predicted trips for the next three hours in 15-minute slots. The <strong>shaded band is the 80% interval</strong> — the model expects the real value to land inside it 4 times out of 5. Use the zone selector to change zones.</p>
+
+      <div class="note">
+        A forecast never appears as a bare number here. A prediction without a range hides how confident the model is, and a planner acting on the middle line alone would be over-trusting it.
+      </div>
+      <p class="footnote">One zone at a time is deliberate — eight overlapping lines on one chart would need eight distinguishable colours, and no palette stays readable at that count.</p>
+
+      <h4>Model registry</h4>
+      <p>Every model version ever trained, with columns <strong>Version</strong>, <strong>Algorithm</strong>, <strong>Baseline</strong>, <strong>Skill</strong> and <strong>State</strong> (Active or Inactive).</p>
+
+      <div class="note">
+        Only one model is <strong>Active</strong>. A model that has no recorded evaluation, or misses the target, is stored but left inactive — it is kept for the record, not used for predictions. This is what stops an untested model quietly going live.
+      </div>
+
+      <h4>Retrain model</h4>
+      <p>There is a <strong>Retrain model</strong> button. Pressing it queues a training job in the background and the button shows <em>Queuing…</em>. Training takes around 30 seconds; refresh after a moment and the new version appears in the registry.</p>
+
+      <div class="warn">
+        Two things about this button:
+        <ul style="margin-top:8px">
+          <li><strong>It is visible to everyone, but only admins and analysts can use it.</strong> Other roles get a permission error. The permission is enforced by the server, not by hiding the button.</li>
+          <li><strong>Retraining is a background job, not an instant action.</strong> Nothing appears to happen at first — that is expected. Do not press it repeatedly.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<section id="admin">
+  <h2>10 · Admin — analytics and charging</h2>
+
+  <div class="screen">
+    <div class="screen-head">
+      <span class="screen-name">Admin</span>
+      <span class="screen-path">/admin</span>
+      <span class="who">View: all · Edit: planner, admin</span>
+    </div>
+    <div class="screen-body">
+      <p>Two tabs: <strong>Analytics</strong> and <strong>Charging</strong>.</p>
+
+      <h3>Analytics tab</h3>
+      <p>Choose a period with the <strong>Range</strong> dropdown — 7, 14, 30 or 45 days.</p>
+
+      <h4>The six KPI tiles</h4>
+      <div class="scroller">
+        <table>
+          <thead><tr><th>Tile</th><th>Meaning</th></tr></thead>
+          <tbody>
+            <tr><td class="key">Trips</td><td>Total journeys in the period</td></tr>
+            <tr><td class="key">Per day</td><td>Average journeys per day</td></tr>
+            <tr><td class="key">Distance</td><td>Total kilometres ridden</td></tr>
+            <tr><td class="key">Ride time</td><td>Total hours spent riding</td></tr>
+            <tr><td class="key">Energy</td><td>Electricity used, in kWh</td></tr>
+            <tr><td class="key">CO₂ avoided</td><td>Emissions saved versus the same journeys by car</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h4>Trips per day</h4>
+      <p>A line chart of daily journeys across the period. Weekly rhythm is usually visible.</p>
+
+      <h4>Where vehicles accumulate</h4>
+      <p>A horizontal bar chart of <strong>net flow</strong> per zone — journeys that <em>ended</em> there minus journeys that <em>started</em> there.</p>
+      <ul>
+        <li><strong>Positive</strong> (right) — more journeys end here than start. Vehicles pile up overnight.</li>
+        <li><strong>Negative</strong> (left) — more journeys start here than end. The zone is stripped by morning.</li>
+      </ul>
+
+      <div class="note">
+        This chart and the Rebalancing tab describe the same problem from opposite ends. This one shows vehicles draining out of Shahapur; the rebalancing planner is what moves them back.
+      </div>
+
+      <h4>Modal split and emission factors</h4>
+      <p>Modal split shows the share of journeys by vehicle type as labelled bars. Below it, the emission factors used in the CO₂ calculation, each with a <strong>cited source</strong> — hover to read it.</p>
+
+      <div class="note">
+        The CO₂ figure rests on an assumption printed right beside it: <em>each trip is assumed to replace a car trip of equal distance</em>. Stating it lets a reader who disagrees see exactly what they are disagreeing with, instead of the assumption hiding in the code.
+      </div>
+
+      <h4>Per zone table, and export</h4>
+      <p>A table of every zone with journeys started, ended, net flow, distance and CO₂ saved. The <strong>Export CSV</strong> button downloads the daily figures as a spreadsheet file.</p>
+
+      <h3>Charging tab</h3>
+      <p>Where charging stations are, and how to add one.</p>
+
+      <h4>Adding a station</h4>
+      <ol class="steps">
+        <li>Click anywhere on the map. A blue marker appears where you clicked, labelled <em>New station here</em>.</li>
+        <li>Type a <strong>Name</strong>, e.g. "Vadgaon Market".</li>
+        <li>Set <strong>Charge points</strong> (how many vehicles can charge at once) and <strong>kW each</strong> (charging power).</li>
+        <li>Choose a <strong>Status</strong>:
+          <ul>
+            <li><strong>Active</strong> — riders can see it on the Plan screen</li>
+            <li><strong>Planned</strong> — recorded but not yet built, hidden from riders</li>
+            <li><strong>Offline</strong> — temporarily out of service</li>
+          </ul>
+        </li>
+        <li>Press <strong>Add station</strong>. It appears in the list and on the map immediately.</li>
+      </ol>
+
+      <div class="note">
+        You are not asked which zone the station is in. The application works that out from where you clicked — so the two can never disagree.
+      </div>
+
+      <p>The list on the right shows every station with its charge points, power, coordinates and status, and a <strong>Remove</strong> button. Removing hides it from riders but keeps the record, so past journeys that referenced it still make sense.</p>
+
+      <div class="tip">
+        The best thing to demonstrate here: the Sim screen says unmet demand is caused by flat batteries. Add a station in a zone that is short, and you have responded directly to a finding the simulation produced.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<section id="gbfs">
+  <h2>11 · The public data feed</h2>
+
+  <p>The application publishes its fleet in <strong>GBFS</strong> — General Bikeshare Feed Specification, the open standard journey planners use. It needs no login. Open it in any browser tab:</p>
+
+<pre>http://localhost:4000/gbfs/2.3/gbfs.json               <span class="c"># index of all feeds</span>
+http://localhost:4000/gbfs/2.3/system_information.json <span class="c"># about the system</span>
+http://localhost:4000/gbfs/2.3/vehicle_types.json      <span class="c"># the four vehicle types</span>
+http://localhost:4000/gbfs/2.3/free_bike_status.json   <span class="c"># available vehicles now</span></pre>
+
+  <div class="note">
+    Two privacy rules are enforced in the feed, not merely intended:
+    <ul style="margin-top:8px">
+      <li><strong>Only available vehicles are published.</strong> A vehicle being ridden would reveal a rider's live location, and the feed has no login.</li>
+      <li><strong>Vehicle IDs change every hour.</strong> Otherwise anyone polling the feed could follow one vehicle across days and reconstruct its rider's movements.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<section id="tasks">
+  <h2>12 · Common tasks, step by step</h2>
+
+  <h3>Plan a journey and find a scooter</h3>
+  <ol class="steps">
+    <li>Sign in. Click <strong>Plan</strong>.</li>
+    <li>Press <strong>Sample trip</strong> — or click the map twice.</li>
+    <li>Read the three route cards; click one to see its four measures.</li>
+    <li>Scroll to <strong>Available near your pickup</strong> for vehicles and their batteries.</li>
+    <li>Scroll to <strong>Charging on the way</strong> for stations along your chosen route.</li>
+  </ol>
+
+  <h3>Find out whether bike lanes are worth building</h3>
+  <ol class="steps">
+    <li>Click <strong>Sim</strong>.</li>
+    <li>Select <strong>Baseline — typical weekday</strong> and press <strong>Run simulation</strong>.</li>
+    <li>Select <strong>Protected bike lanes — city centre</strong> and run that too.</li>
+    <li>With bike lanes still selected, set <strong>Compare against</strong> to the baseline.</li>
+    <li>Read the incident rate row: about <strong>31% lower</strong>, while trips served slightly increased.</li>
+  </ol>
+
+  <h3>Move vehicles to where they are needed</h3>
+  <ol class="steps">
+    <li>Click <strong>Fleet</strong>, then the <strong>Rebalancing</strong> tab.</li>
+    <li>Read the supply table — red gaps are short zones, green are oversupplied.</li>
+    <li>Press <strong>Solve rebalancing</strong>.</li>
+    <li>Read the plan: imbalance closed, and the van kilometres it costs.</li>
+    <li>Mark tasks <strong>Done</strong> as you go.</li>
+  </ol>
+
+  <h3>Add a charging station where the simulation says one is needed</h3>
+  <ol class="steps">
+    <li>On <strong>Sim</strong>, note the unmet-demand reason: <em>no charged vehicle</em>.</li>
+    <li>Go to <strong>Admin → Charging</strong>.</li>
+    <li>Click the map where cover is thin — the residential edges.</li>
+    <li>Name it, set charge points and power, press <strong>Add station</strong>.</li>
+    <li>Go back to <strong>Plan</strong>, route through that area, and see it appear under <strong>Charging on the way</strong>.</li>
+  </ol>
+
+  <h3>Export figures for a report</h3>
+  <ol class="steps">
+    <li>Click <strong>Admin</strong>, stay on <strong>Analytics</strong>.</li>
+    <li>Choose a <strong>Range</strong>.</li>
+    <li>Press <strong>Export CSV</strong>. Open the file in Excel or LibreOffice.</li>
+  </ol>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<section id="trouble">
+  <h2>13 · When something goes wrong</h2>
+
+  <p class="lead">Run <code>npm run demo:check</code> first. It performs eight checks and prints the exact command to fix whatever failed.</p>
+
+  <div class="scroller">
+    <table>
+      <thead><tr><th>What you see</th><th>Why</th><th>Fix</th></tr></thead>
+      <tbody>
+        <tr><td>Nothing starts, <code>EADDRINUSE</code></td><td>An old copy still running</td><td class="num">fuser -k 4000/tcp</td></tr>
+        <tr><td>Plan says the service is unreachable</td><td>Python service not running</td><td class="num">npm run dev:ml</td></tr>
+        <tr><td>Sim run goes straight to <em>failed</em></td><td>Same — the Python service is down</td><td class="num">npm run dev:ml</td></tr>
+        <tr><td>Admin says "no rollups yet"</td><td>Analytics tables never built</td><td class="num">npm run rollup</td></tr>
+        <tr><td>A run stays at <em>queued</em></td><td>Live updates did not connect</td><td>Wait — it refreshes itself every 1.5 s</td></tr>
+        <tr><td>Rebalancing finds no moves</td><td>Fleet is balanced, or the km value is too low</td><td>Raise "worth driving N km"</td></tr>
+        <tr><td>Map is blank/grey</td><td>No internet for street tiles</td><td>Use the <strong>Offline map</strong> toggle on Live</td></tr>
+        <tr><td>"Use my location" fails</td><td>Browsers block location on non-HTTPS pages</td><td>Click the map, or press <strong>Sample trip</strong></td></tr>
+        <tr><td>Sign-in rejects the password</td><td>The seed regenerated the demo passwords</td><td>Use what <code>db:seed</code> printed, or sign up</td></tr>
+        <tr><td>A button does nothing</td><td>Your role is not allowed to use it</td><td>Sign in as <strong>admin</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<section id="glossary">
+  <h2>14 · Glossary</h2>
+
+  <div class="scroller">
+    <table>
+      <thead><tr><th>Term</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td class="key">Zone</td><td>One of eight areas Belagavi is divided into for analysis</td></tr>
+        <tr><td class="key">Segment</td><td>One stretch of road between two junctions. There are 9,212.</td></tr>
+        <tr><td class="key">Congestion index</td><td>0 = free flowing, 1 = completely jammed</td></tr>
+        <tr><td class="key">Scenario</td><td>A set of choices about the city, ready to simulate</td></tr>
+        <tr><td class="key">Run</td><td>One execution of a scenario, with its results</td></tr>
+        <tr><td class="key">Seed</td><td>The starting number for the simulation's randomness. Same seed = same results.</td></tr>
+        <tr><td class="key">Baseline</td><td>The run everything else is compared against</td></tr>
+        <tr><td class="key">Unmet demand</td><td>Someone wanted to travel but no usable vehicle was reachable</td></tr>
+        <tr><td class="key">Utilisation</td><td>Share of time the fleet is actually being ridden. Real systems are low.</td></tr>
+        <tr><td class="key">Rebalancing</td><td>Moving vehicles from where they are to where they will be wanted</td></tr>
+        <tr><td class="key">Net flow</td><td>Journeys ending in a zone minus journeys starting there</td></tr>
+        <tr><td class="key">MAE</td><td>Mean Absolute Error — the average size of a prediction's mistake</td></tr>
+        <tr><td class="key">Skill ratio</td><td>Model error ÷ simple-rule error. Below 1 means the model helps.</td></tr>
+        <tr><td class="key">Rollup</td><td>Pre-calculated daily totals, so dashboards do not recount everything</td></tr>
+        <tr><td class="key">GBFS</td><td>The open standard for publishing shared-vehicle data</td></tr>
+        <tr><td class="key">Snapping</td><td>Moving a clicked point to the nearest actual road</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<section id="scope">
+  <h2>15 · What the application does not do</h2>
+
+  <p class="lead">Knowing the edges is part of knowing the tool. These are deliberate decisions, not unfinished work.</p>
+
+  <div class="scroller">
+    <table>
+      <thead><tr><th>Not available</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td class="key">Booking or renting a vehicle</td><td>This is the planning layer beneath a rental service, not the service itself. You can plan a journey and see which vehicles are available, but not unlock one.</td></tr>
+        <tr><td class="key">Payments</td><td>No card data touches this system by design. A half-built payment path would be a liability.</td></tr>
+        <tr><td class="key">Docking stations and parking rules</td><td>Not built. Vehicles are free-floating within zones.</td></tr>
+        <tr><td class="key">Notifications and messaging</td><td>Not built, though live updates already reach the screen.</td></tr>
+        <tr><td class="key">Emergency response</td><td>Not built — it depends on incident detection that is only partly built.</td></tr>
+        <tr><td class="key">Searching by street name</td><td>Set points by clicking the map. There is no address search box.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<hr class="rule">
+
+<p class="footnote">This manual describes the application as built. The presentation timings and examiner questions are in a separate document, <em>Viva Run of Show</em>. Technical contracts are in <code>docs/MODULES.md</code>, and the reasoning behind each significant decision is in <code>docs/adr/</code>.</p>
+
+</div>
