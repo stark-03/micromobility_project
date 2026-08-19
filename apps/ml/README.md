@@ -22,6 +22,66 @@ pip install -r apps/ml/requirements.txt
 
 Verified interpreter: **Python 3.12.13**.
 
+### The Python version is not optional
+
+`python=3.12` in that command is the whole point, not a preference. Create the
+environment without it and conda gives you its current default, which is newer
+than parts of this stack. When pip cannot find a prebuilt wheel for your
+interpreter it falls back to **building from source**, and on Windows that ends
+like this:
+
+```
+ERROR: Could not find C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe
+error: metadata-generation-failed  (pandas)
+```
+
+That message names Visual Studio, so it reads like a missing compiler. The
+compiler is only missing because it should never have been needed: pandas 2.2.3
+publishes Windows wheels for CPython 3.9–3.13, and on 3.12 every pin in
+`requirements.txt` installs as a binary with nothing to build.
+
+The fix is the interpreter, not the toolchain:
+
+```
+conda deactivate
+conda env remove -n micromobility -y
+conda create -n micromobility python=3.12 -y
+conda activate micromobility
+python --version          # confirm 3.12.x BEFORE installing
+pip install -r apps/ml/requirements.txt
+```
+
+If something still insists on compiling, take the compiled packages from
+conda-forge, which ships Windows binaries, then let pip fill in the rest:
+
+```
+conda install -c conda-forge numpy=2.1.3 pandas=2.2.3 scikit-learn=1.6.0 lightgbm=4.5.0 scipy -y
+pip install -r apps/ml/requirements.txt
+```
+
+`scipy==1.18.0` is the one pin worth relaxing if it has no wheel for your
+platform — this service uses only `scipy.optimize.linprog`, which has been
+stable for years, so `scipy>=1.14` is safe.
+
+### Running it on Windows
+
+`npm run dev:ml` is Linux-only — it sources `conda.sh` through `bash -lc`,
+which Windows `cmd` and PowerShell do not have. Start the service by hand and
+run `npm run dev` (API + web) in a second terminal instead of `npm run demo`:
+
+```
+conda activate micromobility
+cd apps\ml
+uvicorn app.main:app --reload --port 8000
+```
+
+Everything else — the API, the web app, the endpoints — behaves the same. Only
+the convenience script is platform-specific.
+
+**Not verified on Windows.** This project is developed and tested on Linux; the
+guidance above follows from how pip, conda and wheel tags work, not from a run
+on a Windows machine.
+
 ## Run
 
 From the repo root, `npm run dev:ml` does all of the below. By hand:
