@@ -438,165 +438,192 @@ a:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outli
   <header class="masthead">
     <div class="kicker">AI Urban Micro Mobility Simulator · Dept. of CSE, AITM Belagavi</div>
     <h1>Viva Run of Show</h1>
-    <p class="standfirst">A fifteen-minute demo with the timings, the exact numbers to quote, and honest answers to the questions your examiner is most likely to ask.</p>
+    <p class="standfirst">A fifteen-minute demonstration in the order that makes the argument: one rider's journey, then the city behind it, then a decision the system makes for you.</p>
     <div class="meta-strip">
       <span class="chip"><strong>11</strong> of 16 modules</span>
-      <span class="chip"><strong>355</strong> JS tests</span>
+      <span class="chip"><strong>379</strong> JS tests</span>
       <span class="chip"><strong>82</strong> Python tests</span>
       <span class="chip"><strong>7</strong> screens</span>
-      <span class="chip"><strong>3</strong> services</span>
+      <span class="chip"><strong>9,212</strong> real streets</span>
     </div>
   </header>
 
   <!-- ══════════════════════════════════════════════════════ -->
   <section>
-    <h2>Five minutes before</h2>
-    <p class="lead">Do this while the previous student is still presenting. Cold-starting in front of an examiner is the single most avoidable way to lose the room.</p>
+    <h2>Before you speak — Windows setup</h2>
+    <p class="lead">Windows cannot use <code>npm run demo</code>; that script is Linux-only. You need <strong>three terminals</strong>, started in this order. Do this while the previous student presents.</p>
 
-<pre><span class="c"># 1 — from the project root</span>
-cd "~/Downloads/Cubiccode Projects/Full Stack Tutorial/Amogh Project"
+<pre><span class="c">TERMINAL 1 — API   (from the project root)</span>
+npm run dev:api
 
-<span class="c"># 2 — eight checks; prints the exact fix for anything broken</span>
-npm run demo:check
+<span class="c">TERMINAL 2 — ML service   (must be inside apps\ml)</span>
+conda activate micromobility
+cd "C:\Users\cw\Downloads\Amogh Project\Amogh Project\apps\ml"
+uvicorn app.main:app --reload --port 8000 --host 0.0.0.0
 
-<span class="c"># 3 — starts API :4000, web :5173, ML :8000, traffic generator</span>
-npm run demo</pre>
+<span class="c">TERMINAL 3 — Web   (from the project root)</span>
+npm run dev:web</pre>
 
-    <div class="panel">
-      <span class="panel-label">Then, before you speak</span>
+    <div class="panel alarm">
+      <span class="panel-label">Check these two before you trust it</span>
       <ul style="margin:0;padding-left:19px;display:flex;flex-direction:column;gap:7px;">
-        <li>Open <strong>localhost:5173</strong>, sign in as <code>admin@belagavi.local</code> / <code>eQwwwt689EpL</code>.</li>
-        <li>Click through all seven tabs once. This warms every lazy-loaded chunk, so nothing shows a skeleton while an examiner watches.</li>
-        <li>Leave the browser on <strong>Live</strong>. It is the screen that looks most like a real product.</li>
-        <li>Open a second tab on the GBFS feed — you will need it at 14:00 and you do not want to type a URL then.</li>
+        <li>Terminal 2 must print <strong>Application startup complete</strong>. <em>Started reloader process</em> alone is not enough — the worker may still be importing, which takes 15–20 s on Windows the first time.</li>
+        <li>Open <strong>http://127.0.0.1:8000/healthz</strong>. You need <code>{"status":"ok"}</code>. If the Plan screen later says the routing service is unreachable, this is the thing that is wrong.</li>
       </ul>
     </div>
 
-    <div class="say">Nothing. Do not narrate the setup. Start the clock when the map is on screen.</div>
+    <div class="say">
+      Nothing. Do not narrate the setup. Open <strong>localhost:5173</strong>, get to the sign-in page, and start the clock there.
+    </div>
+
+    <p class="footnote">If the map background is blank with a note saying street tiles are unavailable, that laptop cannot reach OpenStreetMap. It is cosmetic — pins, routes and vehicles all still draw. On the Live screen, switch on <strong>Offline map</strong> and it looks deliberate.</p>
   </section>
 
   <!-- ══════════════════════════════════════════════════════ -->
   <section>
     <h2>The run of show</h2>
-    <p class="lead">Fifteen minutes, seven segments. The segments are numbered because they are a sequence — the argument only lands if it is made in this order: <em>here is the city → here is what we predict → here is what we simulate → here is what we optimise → here is what it measured.</em></p>
+    <p class="lead">Eight segments. The order is the argument — <em>a rider needs a scooter → here is the city → here is what we predict → here is what we simulate → here is what we optimise → and here is us acting on what the simulation found.</em> It ends by closing that loop, which is the strongest thirty seconds you have.</p>
 
     <div class="run">
 
       <article class="seg">
         <div class="seg-head">
           <span class="clock">0:00</span>
-          <span class="seg-title">The problem<span class="where">no screen · look at them, not the laptop</span></span>
+          <span class="seg-title">The problem<span class="where">no screen · look at them</span></span>
           <span class="dur">90s</span>
         </div>
         <div class="seg-body">
-          <p>Do not open with architecture. Open with the decision a real person has to make.</p>
           <div class="say">
-            <em>“A city planner in Belagavi has to decide where to put forty docking stations, or whether a bike lane on Congress Road actually reduces congestion. Today that decision gets made on intuition and tested by building it — and if it's wrong, the money is spent and the road is dug up. This project is a virtual copy of the city where you test the policy before you build it.”</em>
+            <em>“A city planner in Belagavi has to decide where to put forty docking stations, or whether a bike lane on Congress Road actually reduces congestion. Today that gets decided on intuition and tested by building it — and if it's wrong, the money is spent and the road is dug up. This is a virtual copy of the city where you test the policy before you build it.”</em>
           </div>
-          <p class="footnote">Then, one sentence on what makes it more than a dashboard: <em>“Anyone can plot scooters on a map. The point here is the counterfactual — run the same city twice, once with your policy and once without, same random seed, and diff the results.”</em></p>
+          <p class="footnote">Then one line on what makes it more than a dashboard: <em>“Anyone can plot scooters on a map. The point here is the counterfactual — run the same city twice, once with your policy and once without, same random seed, and diff the results.”</em></p>
         </div>
       </article>
 
       <article class="seg">
         <div class="seg-head">
           <span class="clock">1:30</span>
-          <span class="seg-title">Live<span class="where">the city is real</span></span>
-          <span class="dur">2 min</span>
+          <span class="seg-title">Sign up<span class="where">the sign-in page</span></span>
+          <span class="dur">1 min</span>
         </div>
         <div class="seg-body">
           <ul>
-            <li>Zoom in until street names are legible. Point at one you recognise.</li>
-            <li>Congestion recolours every three seconds over a WebSocket — mention it once, do not wait for it.</li>
-            <li>Click a coloured road: name, congestion percentage.</li>
+            <li>Click <strong>Create an account</strong>. Fill it in live — any email, password at least 10 characters with a letter and a digit.</li>
+            <li>Press <strong>Create account &amp; view the map</strong>. You land signed in, on the live city.</li>
           </ul>
-          <div class="say"><em>“These are 9,212 real street segments imported from OpenStreetMap — 832 km, 1,408 of them named. The routing and the simulation both run on this graph, not on a drawing of a city.”</em></div>
+          <div class="say"><em>“A new account is a commuter — they can see the city and plan journeys. The planning and operations screens need a role an administrator grants. That's enforced on the server, not by hiding buttons.”</em></div>
+          <p class="footnote">Doing this live rather than logging in with a prepared account is worth the thirty seconds: it proves registration, session handling and role assignment in one action.</p>
         </div>
       </article>
 
       <article class="seg">
         <div class="seg-head">
-          <span class="clock">3:30</span>
-          <span class="seg-title">Data<span class="where">where the machine learning is</span></span>
-          <span class="dur">2 min</span>
-        </div>
-        <div class="seg-body">
-          <p>This is the segment that answers “where's the AI?” before anyone asks it.</p>
-          <ul>
-            <li>Headline tiles: model MAE against the seasonal-naïve baseline, and the skill ratio.</li>
-            <li>Forecast chart with its 80% interval — point at the shading.</li>
-            <li>Model registry: every version, its metrics, and which one is active.</li>
-          </ul>
-          <div class="say"><em>“LightGBM forecasting trips per zone per fifteen minutes. MAE 0.242 against a seasonal-naïve baseline of 0.610 — a skill ratio of 0.397, where the design document asked for 0.70 or better. The split is chronological, not random, and the evaluation harness refuses a split where the validation window starts before the training data ends. A random split on a time series would let the model see Tuesday evening while predicting Tuesday morning.”</em></div>
-          <p class="footnote">If they look interested, add: a model with no recorded evaluation never gets the <code>is_active</code> flag. The registry enforces it.</p>
-        </div>
-      </article>
-
-      <article class="seg">
-        <div class="seg-head">
-          <span class="clock">5:30</span>
-          <span class="seg-title">Sim<span class="where">the centrepiece — give it the most time</span></span>
-          <span class="dur">4 min</span>
+          <span class="clock">2:30</span>
+          <span class="seg-title">Plan a journey<span class="where">Plan · the rider's story</span></span>
+          <span class="dur">3 min</span>
         </div>
         <div class="seg-body">
           <ul>
-            <li>Four scenarios. <strong>Baseline</strong> is the city as it runs today; the other three each pull exactly one lever, so any difference is attributable to that lever.</li>
-            <li>Select <strong>Protected bike lanes</strong>. Press <strong>Run simulation</strong>. It finishes in about 200 ms.</li>
-            <li>Read the results tiles. Then scroll to <strong>why</strong> demand went unmet.</li>
-            <li><strong>Compare against → Baseline.</strong> This is the moment the project justifies its name.</li>
+            <li>Press <strong>Sample trip</strong>. It drops both pins instantly — do not hunt around the map in front of an examiner.</li>
+            <li>Three routes appear on their own. Click each card in turn.</li>
+            <li>Point at a <span style="color:var(--ok);font-weight:600">green</span> figure: that route wins on that measure.</li>
+            <li>Scroll down: <strong>Available near your pickup</strong> — real vehicles, walking distance, battery.</li>
+            <li>Scroll further: <strong>Charging on the way</strong> — stations within 700 m of the route you chose.</li>
           </ul>
-          <div class="say"><em>“Protected bike lanes cut the incident rate 31% while slightly increasing trips served. And the seed line — same seed and same scenario produce identical metrics, with a test asserting exactly that. A simulation you cannot reproduce isn't evidence.”</em></div>
-          <div class="panel" style="background:var(--accent-dim);border-color:var(--accent);">
-            <span class="panel-label">The best single moment in the demo</span>
-            <p>Every unmet trip in the baseline is <strong>“no charged vehicle”</strong> — not “not enough scooters”. The simulator found that on its own.</p>
-            <p class="footnote"><em>“The answer this gives a planner isn't buy more vehicles. It's build charging infrastructure. That's the kind of finding the module exists to produce, and nobody coded that conclusion in.”</em></p>
+          <div class="say"><em>“Three routes over the same real street graph, weighted differently. Fastest tolerates traffic and hills. Safest prefers lit streets and bike lanes and costs you minutes. The trade-off is the product — and this is A-star search with a multi-objective cost function, running in a separate Python service.”</em></div>
+          <div class="panel">
+            <span class="panel-label">If they ask how the route knows where you clicked</span>
+            <p>Say the honest thing: routes must start and end on an actual road, so a pin is <strong>snapped</strong> to the nearest one — and the screen tells you how far it moved. It is adjusting your input and admitting it, rather than silently routing from somewhere else.</p>
           </div>
         </div>
       </article>
 
       <article class="seg">
         <div class="seg-head">
-          <span class="clock">9:30</span>
-          <span class="seg-title">Fleet → Rebalancing<span class="where">the optimisation module</span></span>
-          <span class="dur">2 min 30s</span>
+          <span class="clock">5:30</span>
+          <span class="seg-title">Data<span class="where">where the machine learning is</span></span>
+          <span class="dur">2 min</span>
         </div>
         <div class="seg-body">
+          <p>This answers "where's the AI?" before it is asked.</p>
           <ul>
-            <li>The table shows what each zone <em>has</em> against its <em>target</em>.</li>
-            <li>Press <strong>Solve rebalancing</strong>. Six vehicles, ~20 km, imbalance 7.8 → 1.8.</li>
-            <li>Drag <strong>“worth driving N km”</strong> down to 1 and solve again — the plan empties, and the solver says why.</li>
+            <li>Headline tiles: model error against the baseline, and the skill ratio.</li>
+            <li>The forecast chart — point at the shaded band.</li>
+            <li>The model registry: every version, its metrics, which one is active.</li>
           </ul>
-          <div class="say"><em>“This is a min-cost transportation problem solved with linear programming. The target is each zone's demand-weighted share of the fleet that exists — rebalancing can't create vehicles, it decides where the ones you have should stand, so the gaps sum to zero. And it returns whole vehicles without any rounding, because a transportation problem's constraint matrix is totally unimodular.”</em></div>
-          <p class="footnote">That last clause is worth memorising — it is the most mathematically substantial sentence in the whole demo, and it is true.</p>
+          <div class="say"><em>“LightGBM forecasting trips per zone per fifteen minutes. Error 0.242 against a seasonal-naive baseline of 0.610 — a skill ratio of 0.397, where the design document asked for 0.70 or better. The split is chronological, not random, and the harness refuses a split where validation starts before training ends. A random split on a time series lets the model see Tuesday evening while predicting Tuesday morning.”</em></div>
+          <p class="footnote">If they lean in: the shaded band is the 80% interval, and a model with no recorded evaluation never gets the active flag.</p>
         </div>
       </article>
 
       <article class="seg">
         <div class="seg-head">
-          <span class="clock">12:00</span>
-          <span class="seg-title">Admin<span class="where">measurement and governance</span></span>
+          <span class="clock">7:30</span>
+          <span class="seg-title">Sim<span class="where">the centrepiece — protect this time</span></span>
+          <span class="dur">3 min 30s</span>
+        </div>
+        <div class="seg-body">
+          <ul>
+            <li>Four scenarios. <strong>Baseline</strong> is today's city; each other one changes <strong>exactly one thing</strong>.</li>
+            <li>Select <strong>Protected bike lanes</strong>, press <strong>Run simulation</strong>. It finishes in about 200 ms.</li>
+            <li>Read the tiles, then the line saying <em>why</em> demand went unmet.</li>
+            <li><strong>Compare against → Baseline.</strong></li>
+          </ul>
+          <div class="say"><em>“Protected bike lanes cut the incident rate 31% while slightly increasing trips served. And the seed line — same seed, same scenario, identical metrics, with a test asserting exactly that. A simulation you cannot reproduce isn't evidence.”</em></div>
+          <div class="panel" style="background:var(--accent-dim);border-color:var(--accent);">
+            <span class="panel-label">The finding to plant here — you use it again at 13:00</span>
+            <p>Every unmet trip in the baseline reads <strong>“no charged vehicle”</strong> — not “not enough scooters”.</p>
+            <p class="footnote"><em>“The answer this gives a planner isn't buy more vehicles. It's build charging. Nobody coded that conclusion — it came out of the simulation. Hold that thought, I'll come back to it.”</em></p>
+          </div>
+        </div>
+      </article>
+
+      <article class="seg">
+        <div class="seg-head">
+          <span class="clock">11:00</span>
+          <span class="seg-title">Fleet → Rebalancing<span class="where">the optimisation</span></span>
           <span class="dur">2 min</span>
         </div>
         <div class="seg-body">
           <ul>
-            <li>KPI tiles across 30 days: 50,518 trips, 13,388 kg CO₂ avoided.</li>
-            <li>Point at <strong>Where vehicles accumulate</strong> — Shahapur −1,253, Sadashiv Nagar +936.</li>
-            <li>Emission factors, each with a cited source. Press <strong>Export CSV</strong>.</li>
+            <li>Read the table: what each zone <em>has</em> against its <em>target</em>.</li>
+            <li>Press <strong>Solve rebalancing</strong>. Six vehicles, ~20 km, imbalance 7.8 → 1.8.</li>
+            <li>Drag <strong>worth driving N km</strong> to 1 and solve again — the plan empties and says why.</li>
           </ul>
-          <div class="say"><em>“Two modules describing the same phenomenon from opposite ends: this chart shows vehicles draining out of Shahapur overnight, and the rebalancing planner you just saw is what corrects it. Every number here is read from nightly rollup tables — nothing aggregates 73,000 trips at request time.”</em></div>
-          <p class="footnote">On emissions, say the assumption out loud: every trip is credited as replacing a car trip of equal distance. The app prints that beside the number rather than burying it. Examiners reward stated assumptions.</p>
+          <div class="say"><em>“A min-cost transportation problem, solved by linear programming. The target is each zone's demand-weighted share of the fleet that exists — rebalancing can't create vehicles, it decides where the ones you have should stand, so the gaps sum to zero. And it returns whole vehicles with no rounding, because a transportation problem's constraint matrix is totally unimodular.”</em></div>
+          <p class="footnote">That last clause is the most mathematically substantial sentence in the demo, and it is true. Worth memorising exactly.</p>
         </div>
       </article>
 
       <article class="seg">
         <div class="seg-head">
-          <span class="clock">14:00</span>
-          <span class="seg-title">GBFS, and close<span class="where">second browser tab</span></span>
-          <span class="dur">1 min</span>
+          <span class="clock">13:00</span>
+          <span class="seg-title">Admin — and close the loop<span class="where">Analytics, then Charging</span></span>
+          <span class="dur">1 min 30s</span>
         </div>
         <div class="seg-body">
-          <p>Switch to the tab you opened earlier: <code>localhost:4000/gbfs/2.3/free_bike_status.json</code>, no login.</p>
-          <div class="say"><em>“That's a public GBFS 2.3 feed — the open standard, so any journey planner could consume this fleet without integrating against our private API. And what's deliberately not in it: only available vehicles, because an in-use vehicle's position is a rider's live location. The vehicle IDs rotate hourly so nobody polling the feed can follow one vehicle across days.”</em></div>
-          <p>Close on scope, unprompted. It is far stronger coming from you than dragged out of you.</p>
+          <ul>
+            <li><strong>Analytics:</strong> 30-day KPIs, then point at <strong>Where vehicles accumulate</strong> — Shahapur −1,253, Sadashiv Nagar +936.</li>
+            <li>Switch to the <strong>Charging</strong> tab. <strong>Click the map</strong> in a thin residential area, name it, press <strong>Add station</strong>.</li>
+          </ul>
+          <div class="say"><em>“This chart and the rebalancing planner are the same problem from opposite ends — vehicles draining out of Shahapur overnight, and the optimiser that moves them back. And here I'm acting on what the simulation told us earlier: it said the constraint was charge, not fleet size. So I place a charging station where cover is thin. The simulator found the problem, and this is the tool that responds to it.”</em></div>
+          <div class="panel" style="background:var(--ok-dim);border-color:var(--ok);">
+            <span class="panel-label">Why this ending works</span>
+            <p>You have just shown the system <strong>produce a finding and then act on it</strong>. Most student projects show features side by side. This shows one feeding another — which is what an integrated system means.</p>
+          </div>
+        </div>
+      </article>
+
+      <article class="seg">
+        <div class="seg-head">
+          <span class="clock">14:30</span>
+          <span class="seg-title">GBFS, and stop<span class="where">a pre-opened browser tab</span></span>
+          <span class="dur">30s</span>
+        </div>
+        <div class="seg-body">
+          <p>Switch to a tab already showing <code>127.0.0.1:4000/gbfs/2.3/free_bike_status.json</code>, with no login.</p>
+          <div class="say"><em>“A public GBFS feed — the open standard, so any journey planner could consume this fleet without integrating against our private API. And what's deliberately not in it: only available vehicles, because an in-use vehicle's position is a rider's live location. The IDs rotate hourly so nobody polling can follow one vehicle across days.”</em></div>
+          <p>Then stop talking. Do not fill silence with scope you have not been asked about.</p>
         </div>
       </article>
 
@@ -606,35 +633,32 @@ npm run demo</pre>
   <!-- ══════════════════════════════════════════════════════ -->
   <section>
     <h2>Numbers to know cold</h2>
-    <p class="lead">Every figure below was read from the running system, not estimated. If you are unsure of one, say “I'd have to check” — a wrong number costs more than an unknown one.</p>
+    <p class="lead">Every figure was read from the running system. If you are unsure of one, say "I'd have to check" — a wrong number costs more than an unknown one.</p>
 
     <div class="scroller">
       <table>
-        <thead>
-          <tr><th>What</th><th class="num">Value</th><th>Where it comes from</th></tr>
-        </thead>
+        <thead><tr><th>What</th><th class="num">Value</th><th>Where it comes from</th></tr></thead>
         <tbody>
-          <tr><td class="key">Street network</td><td class="num">9,212 segments · 832 km</td><td>OpenStreetMap via Overpass, 1,408 named</td></tr>
+          <tr><td class="key">Street network</td><td class="num">9,212 segments · 832 km</td><td>OpenStreetMap, 1,408 named</td></tr>
           <tr><td class="key">Trip history</td><td class="num">73,469</td><td>Six weeks, synthetic, autocorrelated</td></tr>
-          <tr><td class="key">Demand model MAE</td><td class="num">0.242</td><td>LightGBM, Poisson objective</td></tr>
-          <tr><td class="key">Baseline MAE</td><td class="num">0.610</td><td>Seasonal-naïve — same slot last week</td></tr>
+          <tr><td class="key">Demand model error</td><td class="num">0.242 MAE</td><td>LightGBM, Poisson objective</td></tr>
+          <tr><td class="key">Baseline error</td><td class="num">0.610 MAE</td><td>Seasonal-naive — same slot last week</td></tr>
           <tr><td class="key">Skill ratio</td><td class="num good">0.397</td><td>Target was ≤ 0.70</td></tr>
           <tr><td class="key">One simulated day</td><td class="num">~200 ms</td><td>SimPy, 8 zones, 165 vehicles</td></tr>
-          <tr><td class="key">Bike lanes → incidents</td><td class="num good">−31.4%</td><td>Run 8 vs run 7, per 1,000 km</td></tr>
+          <tr><td class="key">Bike lanes → incidents</td><td class="num good">−31.4%</td><td>Per 1,000 km, vs baseline</td></tr>
           <tr><td class="key">Bike lanes → trips served</td><td class="num good">+1.3%</td><td>1,495 → 1,515</td></tr>
           <tr><td class="key">Rebalancing → unmet demand</td><td class="num good">−4.2%</td><td>778 → 745, for 109 van-km</td></tr>
           <tr><td class="key">Monsoon → ridership</td><td class="num bad">−56%</td><td>1,495 → 657 trips</td></tr>
-          <tr><td class="key">30-day trips</td><td class="num">50,518</td><td>Admin, from <code>kpi_daily</code></td></tr>
+          <tr><td class="key">30-day trips</td><td class="num">50,518</td><td>Admin, from rollup tables</td></tr>
           <tr><td class="key">30-day CO₂ avoided</td><td class="num">13,388 kg</td><td>Against a 120 g/km car baseline</td></tr>
-          <tr><td class="key">Tests</td><td class="num">355 JS · 82 Python</td><td>Includes determinism &amp; conservation</td></tr>
-          <tr><td class="key">Entry bundle</td><td class="num good">167.8 KB</td><td>gzipped, against a 250 KB budget</td></tr>
+          <tr><td class="key">Tests</td><td class="num">379 JS · 82 Python</td><td>Includes determinism &amp; conservation</td></tr>
         </tbody>
       </table>
     </div>
 
     <div class="panel">
       <span class="panel-label">One number to be careful with</span>
-      <p>If you claim the min-cost solver beats the greedy one it replaced — <strong>−18.4% unserved for 78 van-km, versus 13.0% for 204 km</strong> — say explicitly that this was measured on a deliberately thin fleet where rebalancing bites hardest. It is <em>not</em> the −4.2% on screen. Both are true; they are different configurations, and conflating them is the kind of thing an examiner catches.</p>
+      <p>If you claim the min-cost solver beats the greedy one it replaced — <strong>−18.4% unserved for 78 van-km versus 13.0% for 204 km</strong> — say that this was measured on a deliberately thin fleet where rebalancing bites hardest. It is <em>not</em> the −4.2% on screen. Both are true; they are different configurations, and conflating them is exactly what a sharp examiner catches.</p>
     </div>
   </section>
 
@@ -645,48 +669,48 @@ npm run demo</pre>
     <div class="qa">
 
       <div class="q">
-        <div class="q-text">Where is the AI in this?</div>
-        <p>Two places, both load-bearing. <strong>LightGBM</strong> forecasting demand per zone per fifteen minutes, evaluated against a seasonal-naïve baseline with a chronological split. And <strong>A\* search with a multi-objective cost function</strong> for routing — the same graph, three different weightings of time, safety and gradient. The rebalancing solver is optimisation rather than learning, and it is worth saying so rather than overselling it.</p>
+        <div class="q-text">Can a user actually book a scooter?</div>
+        <p><strong>No — and say so without flinching.</strong> <em>“This is the planning layer beneath a rental service, not the service itself. You can plan a journey and see which vehicles are available with their battery levels, but not unlock one. A booking flow means payments, and no card data touches this system by design — a half-built payment path is a liability, not a feature.”</em></p>
       </div>
 
       <div class="q">
-        <div class="q-text">Why MySQL and not MongoDB?</div>
-        <p>Trips, fares, vehicles and incidents are transactional records with real constraints — a trip cannot reference a vehicle that does not exist. That is a relational problem. MySQL 8.4 also gives spatial types with SRID 4326 and spatial indexes, which the whole map depends on.</p>
+        <div class="q-text">Where is the AI in this?</div>
+        <p>Two places, and be precise about which is which. <strong>LightGBM</strong> forecasting demand per zone per fifteen minutes, evaluated against a baseline with a chronological split. And <strong>A\* search with a multi-objective cost function</strong> for routing. The rebalancing solver is <em>optimisation</em>, not learning — say that rather than overselling it.</p>
       </div>
 
       <div class="q">
         <div class="q-text">Is any of this real data?</div>
-        <p>Be direct: <strong>the street network is real</strong> — genuine OpenStreetMap geometry for Belagavi. <strong>The trips and telemetry are synthetic</strong>, generated with realistic daily and weekly patterns, because real rider data is personal and we do not have it. Say this before they ask; volunteering it reads as rigour, being caught reads as spin.</p>
+        <p>Volunteer this before they ask. <strong>The street network is real</strong> — genuine OpenStreetMap geometry for Belagavi. <strong>Trips and telemetry are synthetic</strong>, generated with realistic daily and weekly patterns, because real rider data is personal and we do not have it. Offered freely it reads as rigour; extracted under questioning it reads as spin.</p>
       </div>
 
       <div class="q">
-        <div class="q-text">Why doesn't the simulation route riders street by street?</div>
-        <p>A deliberate choice, written up as ADR 0003. Riders travel zone centroid to zone centroid at a congestion-adjusted speed. Routing 30,000 riders through A\* would take minutes instead of 200 ms, and it would not move the metrics a planner acts on — wait time and unmet demand are set by <em>where the vehicles are</em>, not which street was taken. The router is the microscopic view; the simulator is the city-scale one.</p>
+        <div class="q-text">Why doesn't the simulation route each rider street by street?</div>
+        <p>A deliberate choice, written up as an architecture decision record. Riders travel zone to zone at a congestion-adjusted speed. Routing 30,000 riders through A\* would take minutes instead of 200 ms and would not move the metrics a planner acts on — wait time and unmet demand are set by <em>where the vehicles are</em>, not which street was taken.</p>
       </div>
 
       <div class="q">
-        <div class="q-text">How do you know the model isn't just memorising?</div>
-        <p>The split is chronological and enforced in code — <code>assert_chronological_split</code> raises if the validation window starts at or before the last training timestamp. Rolling means exclude the current value so the target cannot leak into its own feature, and lags are scoped per zone so a global shift cannot pull another zone's value in.</p>
+        <div class="q-text">Why is the incident count a decimal?</div>
+        <p>Because it is an expected value, not a count. At realistic injury rates a 24-hour run samples zero or one incident, so a sampled figure would make the bike-lane result look better or worse depending on the random seed. Summing per-trip risk gives the unbiased estimate without the variance — which is why 31% reads as 31% every time.</p>
       </div>
 
       <div class="q">
-        <div class="q-text">Why is the safety incident count a decimal?</div>
-        <p>Because it is an expected value, not a count. At realistic injury rates a 24-hour run samples zero or one incident, so a sampled figure would make the bike-lane lever look better or worse depending on the random seed. Summing per-trip risk gives the unbiased estimate with none of the variance — which is why a 31% reduction reads as 31% every time.</p>
+        <div class="q-text">Why MySQL and not MongoDB?</div>
+        <p>Trips, vehicles and incidents are transactional records with real constraints — a trip cannot reference a vehicle that does not exist. That is relational. MySQL 8.4 also gives spatial types with SRID 4326 and spatial indexes, which every map and proximity feature depends on.</p>
       </div>
 
       <div class="q">
-        <div class="q-text">Why three services instead of one?</div>
-        <p>Express owns identity, transactions and the public contract, and is the only writer to MySQL. FastAPI owns everything numeric and holds <em>no database credentials at all</em> — every request carries the data it needs, which is what keeps it stateless. Workers run anything longer than a request. The browser never talks to the Python service.</p>
+        <div class="q-text">Why three services?</div>
+        <p>Express owns identity, transactions and the public contract, and is the only writer to MySQL. FastAPI owns everything numeric and holds <em>no database credentials at all</em> — every request carries the data it needs, which is what keeps it stateless. The browser never talks to the Python service.</p>
       </div>
 
       <div class="q">
         <div class="q-text">Why isn't it finished?</div>
-        <p>Do not apologise. <em>“Eleven of sixteen modules. The ones built are the ones that carry the argument — forecast, simulate, optimise, measure. The five I left are mostly CRUD over a schema that already exists: parking, notifications, billing, emergency response. Each one has a note in the module document saying it was skipped and why, so nothing looks forgotten.”</em></p>
+        <p>Do not apologise. <em>“Eleven of sixteen modules. The ones built carry the argument — forecast, simulate, optimise, measure. The five I left are mostly CRUD over a schema that already exists: parking, notifications, billing, emergency response. Each has a note in the module document saying it was skipped and why, so nothing looks forgotten.”</em></p>
       </div>
 
       <div class="q">
         <div class="q-text">What would you do next?</div>
-        <p>Have one specific answer ready rather than a list. The strongest: <em>“Charging infrastructure planning. The simulator already told us every unmet trip is a flat battery, not a missing vehicle — so the next module is deciding where to put charging points, and the simulator is how I'd evaluate it.”</em> That shows the system produced a finding that drives the roadmap.</p>
+        <p>One specific answer, not a list: <em>“Charging infrastructure planning. The simulator already told us every unmet trip is a flat battery, not a missing vehicle — so the next module decides where charging points go, and the simulator is how I'd evaluate it.”</em> That shows the system produced a finding that drives the roadmap.</p>
       </div>
 
     </div>
@@ -698,46 +722,48 @@ npm run demo</pre>
 
     <div class="panel alarm">
       <h3>First rule</h3>
-      <p>Keep talking. Silence while you debug feels ten times longer than it is. Narrate what you expect to see and fix it while you speak — examiners judge composure at least as much as uptime.</p>
+      <p>Keep talking. Silence while you debug feels ten times longer than it is. Narrate what you expect to see and fix it while you speak — composure is marked at least as heavily as uptime.</p>
     </div>
 
     <div class="scroller">
       <table>
-        <thead>
-          <tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr>
-        </thead>
+        <thead><tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr></thead>
         <tbody>
-          <tr><td>Nothing starts, <code>EADDRINUSE</code></td><td>An old server is still running</td><td class="num">fuser -k 4000/tcp</td></tr>
-          <tr><td>Plan or Sim says the service is unreachable</td><td>uvicorn not running</td><td class="num">npm run dev:ml</td></tr>
-          <tr><td>Admin says “no rollups yet”</td><td>Rollups never built</td><td class="num">npm run rollup</td></tr>
-          <tr><td>A run sits at <em>queued</em></td><td>Socket didn't connect</td><td>Wait — it polls every 1.5 s and catches up</td></tr>
-          <tr><td>Rebalancing finds no moves</td><td>Fleet is balanced, or the km dial is too low</td><td>Raise “worth driving N km”</td></tr>
-          <tr><td>Map tiles are blank</td><td>No internet for OpenStreetMap tiles</td><td>Congestion overlay still works — say so and carry on</td></tr>
+          <tr><td>Plan says the routing service is unreachable</td><td>ML service down, or the IPv6 mismatch</td><td>Check <code>127.0.0.1:8000/healthz</code>; <code>.env</code> must say <code>ML_SERVICE_URL=http://127.0.0.1:8000</code>, then restart the API</td></tr>
+          <tr><td>Sim run goes straight to <em>failed</em></td><td>Same — the Python service</td><td>Same check</td></tr>
+          <tr><td>Blank map, "street tiles unavailable"</td><td>No internet on that laptop</td><td>Cosmetic. Pins and routes still draw; use <strong>Offline map</strong> on Live</td></tr>
+          <tr><td><code>ECONNRESET</code> in the web terminal</td><td>API not running yet</td><td>Start Terminal 1 first, then reload</td></tr>
+          <tr><td><code>ModuleNotFoundError: No module named 'app'</code></td><td>uvicorn started outside <code>apps\ml</code></td><td><code>cd</code> into it, or pass <code>--app-dir</code></td></tr>
+          <tr><td>Admin says "no rollups yet"</td><td>Analytics tables not built</td><td><code>npm run rollup</code></td></tr>
+          <tr><td>A button does nothing</td><td>Your role is not permitted</td><td>Sign in as <strong>admin</strong></td></tr>
         </tbody>
       </table>
     </div>
 
     <div class="panel">
-      <span class="panel-label">If the whole demo will not start</span>
-      <p>Run <code>npm run demo:check</code> on screen. It prints eight checks and the exact command to fix any failure. Doing that in front of an examiner is not an admission of failure — it demonstrates the project has operational tooling, which most student projects do not.</p>
+      <span class="panel-label">If the whole thing will not start</span>
+      <p>Run <code>npm run demo:check</code> on screen. It prints eight checks and the exact command to fix any failure. Doing that in front of an examiner is not an admission of defeat — it shows the project has operational tooling, which most student projects do not.</p>
+    </div>
+
+    <div class="panel">
+      <span class="panel-label">The safety net</span>
+      <p><strong>Live, Fleet and Admin need no Python service at all.</strong> If port 8000 refuses to cooperate, drop segments 2:30 and 7:30 and give the remaining time to Admin and Fleet. Say plainly that the routing service is not running on this machine and describe what it does. That is a far better look than fifteen minutes of debugging.</p>
     </div>
   </section>
 
   <!-- ══════════════════════════════════════════════════════ -->
   <section>
-    <h2>Talking about what isn't built</h2>
+    <h2>Closing on scope</h2>
     <p class="lead">Raise this yourself in the last minute. Volunteered scope reads as judgement; extracted scope reads as a gap.</p>
 
     <div class="scroller">
       <table>
-        <thead>
-          <tr><th>Module</th><th>How to say it</th></tr>
-        </thead>
+        <thead><tr><th>Module</th><th>How to say it</th></tr></thead>
         <tbody>
-          <tr><td class="key">M08 Parking</td><td>A station registry plus a point-in-polygon check. Nothing depends on it, and it teaches nothing the zone model doesn't already show.</td></tr>
-          <tr><td class="key">M09 Safety</td><td>Half built, and say which half: segment scoring feeds the router and the simulator's incident model. Kernel-density risk zones and fall detection are not built.</td></tr>
-          <tr><td class="key">M13 Notifications</td><td>The realtime layer already exists and carries simulation progress. What's missing is templates and delivery adapters.</td></tr>
-          <tr><td class="key">M14 Billing</td><td>The strongest one to have skipped: no card data touches this system by design, so a half-built payment path would be a liability, not a demo.</td></tr>
+          <tr><td class="key">M08 Parking</td><td>A station registry plus a point-in-polygon check. Nothing depends on it, and it teaches nothing the zone model doesn't.</td></tr>
+          <tr><td class="key">M09 Safety</td><td>Half built — say which half. Segment scoring feeds the router and the simulator's incident model. Risk-zone clustering and fall detection are not built.</td></tr>
+          <tr><td class="key">M13 Notifications</td><td>The realtime layer exists and already carries simulation progress. What's missing is templates and delivery.</td></tr>
+          <tr><td class="key">M14 Billing</td><td>The strongest one to have skipped: no card data touches this system by design.</td></tr>
           <tr><td class="key">M16 Emergency</td><td>Depends on the half of M09 that isn't built. Building it on an incomplete foundation would be the wrong order.</td></tr>
         </tbody>
       </table>
@@ -748,6 +774,6 @@ npm run demo</pre>
 
   <hr class="rule">
 
-  <p class="footnote">Every number in this guide was read from the running application. The full click-by-click runbook, the account list and the troubleshooting table live in <code>DEMO.md</code> in the repository; the module-by-module contracts and the reasoning behind each deviation are in <code>docs/MODULES.md</code> and <code>docs/adr/</code>.</p>
+  <p class="footnote">Every number here was read from the running application. The full click-by-click guide to each screen is in <em>User Manual</em>; module contracts are in <code>docs/MODULES.md</code>, and the reasoning behind each significant decision is in <code>docs/adr/</code>.</p>
 
 </div>
