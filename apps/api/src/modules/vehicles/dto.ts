@@ -103,6 +103,9 @@ export interface VehicleRow {
   home_zone_id: string | null;
   home_zone_name: string | null;
   external_ref: string;
+  unlock_code: string | null;
+  station_id: string | null;
+  station_name: string | null;
   type: VehicleType;
   status: VehicleStatus;
   battery_pct: number | null;
@@ -120,6 +123,9 @@ export function toVehicleDto(r: VehicleRow): VehicleDto {
     homeZoneId: r.home_zone_id === null ? null : String(r.home_zone_id),
     homeZoneName: r.home_zone_name,
     externalRef: r.external_ref,
+    unlockCode: r.unlock_code,
+    stationId: r.station_id === null ? null : String(r.station_id),
+    stationName: r.station_name,
     type: r.type,
     status: r.status,
     batteryPct: r.battery_pct === null ? null : Number(r.battery_pct),

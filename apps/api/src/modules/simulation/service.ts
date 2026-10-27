@@ -555,7 +555,15 @@ const LOWER_IS_BETTER = new Set([
   'safetyIncidents',
   'incidentsPer1000Km',
   'rebalanceDistanceKm',
+  'whPerTrip',
 ]);
+
+/**
+ * Metrics that move with the scenario but are neither good nor bad on their
+ * own: total energy rises when more trips are served, which is the point.
+ * Energy *per trip* is the efficiency verdict; total energy is reported flat.
+ */
+const NEUTRAL = new Set(['energyKwh']);
 
 const COMPARABLE = [
   'tripsServed',
@@ -569,6 +577,8 @@ const COMPARABLE = [
   'emptyRatioPct',
   'carKmReplaced',
   'co2AvoidedKg',
+  'energyKwh',
+  'whPerTrip',
   'safetyIncidents',
   'incidentsPer1000Km',
 ];
@@ -599,6 +609,8 @@ export function compareMetrics(
     let direction: CompareRowDto['direction'];
     if (delta === 0) {
       direction = 'same';
+    } else if (NEUTRAL.has(metric)) {
+      direction = 'neutral';
     } else if (LOWER_IS_BETTER.has(metric)) {
       direction = delta < 0 ? 'better' : 'worse';
     } else {

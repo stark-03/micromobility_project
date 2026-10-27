@@ -16,7 +16,7 @@ baseline; this keeps that honest.
 from __future__ import annotations
 
 from .engine import RunState
-from .scenario import CO2_G_PER_KM, CO2_G_PER_KM_CAR, ScenarioSpec
+from .scenario import CO2_G_PER_KM, CO2_G_PER_KM_CAR, WH_PER_KM, ScenarioSpec
 
 
 def _mean(values: list[float]) -> float:
@@ -40,9 +40,13 @@ def summarise(spec: ScenarioSpec, state: RunState, fleet: list) -> dict:
     # assumption in the payload matters more than the number itself — a planner
     # who disagrees with the counterfactual can rescale it.
     co2_avoided_g = 0.0
+    # Energy drawn by the fleet for riders' trips. Rebalancing vans run on
+    # fuel, not the fleet's batteries, so empty kilometres are not counted.
+    energy_wh = 0.0
     for t in trips:
         km = t.distanceM / 1000.0
         co2_avoided_g += (CO2_G_PER_KM_CAR - CO2_G_PER_KM[t.kind]) * km
+        energy_wh += WH_PER_KM.get(t.kind, 0.0) * km
 
     expected_incidents = sum(t.incidentRisk for t in trips)
 
@@ -82,6 +86,8 @@ def summarise(spec: ScenarioSpec, state: RunState, fleet: list) -> dict:
         # The displacement figure congestion delta is derived from.
         "carKmReplaced": round(loaded_m / 1000.0, 2),
         "co2AvoidedKg": round(co2_avoided_g / 1000.0, 3),
+        "energyKwh": round(energy_wh / 1000.0, 3),
+        "whPerTrip": round(energy_wh / served, 2) if served else 0.0,
         # Expected incidents, not a sampled count — see engine.incident_risk().
         "safetyIncidents": round(expected_incidents, 3),
         "incidentsPer1000Km": round(1000.0 * expected_incidents / (loaded_m / 1000.0), 4)
@@ -142,7 +148,12 @@ LOWER_IS_BETTER = {
     "safetyIncidents",
     "incidentsPer1000Km",
     "rebalanceDistanceKm",
+    "whPerTrip",
 }
+
+# Changed, but neither good nor bad in itself: total energy rises when more
+# trips are served. Energy per trip carries the efficiency verdict.
+NEUTRAL = {"energyKwh"}
 
 COMPARABLE = [
     "tripsServed",
@@ -156,6 +167,8 @@ COMPARABLE = [
     "emptyRatioPct",
     "carKmReplaced",
     "co2AvoidedKg",
+    "energyKwh",
+    "whPerTrip",
     "safetyIncidents",
     "incidentsPer1000Km",
 ]
@@ -178,6 +191,8 @@ def compare(baseline: dict, variant: dict) -> list[dict]:
 
         if delta == 0:
             direction = "same"
+        elif key in NEUTRAL:
+            direction = "neutral"
         elif key in LOWER_IS_BETTER:
             direction = "better" if delta < 0 else "worse"
         else:

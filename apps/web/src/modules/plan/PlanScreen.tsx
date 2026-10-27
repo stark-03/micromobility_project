@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   Box,
@@ -11,10 +12,19 @@ import {
   Typography,
 } from '@mui/material';
 import { VEHICLE_TYPES } from '@mm/shared-types';
-import type { LngLat, RouteCompareDto, RouteDto, VehicleType, ZoneDto } from '@mm/shared-types';
+import type {
+  LngLat,
+  PlaceDto,
+  RouteCompareDto,
+  RouteDto,
+  VehicleType,
+  ZoneDto,
+} from '@mm/shared-types';
 import { api } from '../../lib/api.ts';
 import type { ApiClientError } from '../../lib/api.ts';
 import { EmptyState, ErrorState, LoadingState } from '../../components/StateViews.tsx';
+import { PlaceSearch } from '../../components/PlaceSearch.tsx';
+import { RiskBreakdown, RiskChip } from './RiskSummary.tsx';
 import { RouteMap } from './RouteMap.tsx';
 import type { ChargingStation, NearbyVehicle } from './RouteMap.tsx';
 
@@ -32,6 +42,7 @@ function metres(m: number): string {
 function PinRow({
   label,
   point,
+  name,
   colour,
   active,
   onFocus,
@@ -39,6 +50,8 @@ function PinRow({
 }: {
   label: string;
   point: LngLat | null;
+  /** The place's name when it was chosen by search rather than clicked. */
+  name: string | null;
   colour: string;
   active: boolean;
   onFocus: () => void;
@@ -62,9 +75,15 @@ function PinRow({
         <Typography variant="caption" color="text.secondary" className="block leading-none">
           {label === 'A' ? 'Pickup' : 'Destination'}
         </Typography>
-        <Typography variant="body2" className="mono truncate">
-          {point ? `${point[1].toFixed(5)}, ${point[0].toFixed(5)}` : 'not set — click the map'}
-        </Typography>
+        {name && point ? (
+          <Typography variant="body2" className="truncate">
+            {name}
+          </Typography>
+        ) : (
+          <Typography variant="body2" className="mono truncate">
+            {point ? `${point[1].toFixed(5)}, ${point[0].toFixed(5)}` : 'not set — click the map'}
+          </Typography>
+        )}
       </Box>
       {point ? (
         <Button size="small" variant="text" color="inherit" onClick={onClear}>
@@ -100,8 +119,11 @@ function Metric({ label, value, unit, best }: { label: string; value: number; un
 }
 
 export function PlanScreen() {
+  const navigate = useNavigate();
   const [pickup, setPickup] = useState<LngLat | null>(null);
   const [drop, setDrop] = useState<LngLat | null>(null);
+  const [pickupName, setPickupName] = useState<string | null>(null);
+  const [dropName, setDropName] = useState<string | null>(null);
   const [picking, setPicking] = useState<'pickup' | 'drop'>('pickup');
   const [mode, setMode] = useState<VehicleType>('scooter');
   const [profile, setProfile] = useState('fastest');
@@ -119,6 +141,16 @@ export function PlanScreen() {
     queryFn: () =>
       api.get<NearbyVehicle[]>(
         `/charging/vehicles/near?lng=${pickup![0]}&lat=${pickup![1]}&radiusM=1200`,
+      ),
+    enabled: pickup !== null,
+  });
+
+  /** Charging points near where the rider is starting, before any route exists. */
+  const chargersNear = useQuery({
+    queryKey: ['charging', 'near', pickup],
+    queryFn: () =>
+      api.get<ChargingStation[]>(
+        `/charging/stations/near?lng=${pickup![0]}&lat=${pickup![1]}&radiusM=2000`,
       ),
     enabled: pickup !== null,
   });
@@ -164,9 +196,11 @@ export function PlanScreen() {
   function handlePick(point: LngLat) {
     if (picking === 'pickup') {
       setPickup(point);
+      setPickupName(null);
       setPicking('drop');
     } else {
       setDrop(point);
+      setDropName(null);
       setPicking('pickup');
     }
   }
@@ -180,6 +214,7 @@ export function PlanScreen() {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setPickup([Number(pos.coords.longitude.toFixed(6)), Number(pos.coords.latitude.toFixed(6))]);
+        setPickupName('Your location');
         setPicking('drop');
       },
       // Browsers refuse geolocation on insecure origins and when the user
@@ -196,8 +231,12 @@ export function PlanScreen() {
   function useSampleTrip() {
     const list = zones.data?.data ?? [];
     if (list.length < 2) return;
-    setPickup(list[0]!.centroid.coordinates);
-    setDrop(list[Math.min(3, list.length - 1)]!.centroid.coordinates);
+    const from = list[0]!;
+    const to = list[Math.min(3, list.length - 1)]!;
+    setPickup(from.centroid.coordinates);
+    setPickupName(from.name);
+    setDrop(to.centroid.coordinates);
+    setDropName(to.name);
     setPicking('pickup');
   }
 
@@ -212,7 +251,13 @@ export function PlanScreen() {
   }, [routeList]);
 
   const nearby = vehicles.data?.data ?? [];
-  const stationList = stations.data?.data ?? [];
+  const alongRoute = stations.data?.data ?? [];
+  const nearPickup = chargersNear.data?.data ?? [];
+  // Near the pickup and along the route, once each: a charger can be both.
+  const stationList = [
+    ...alongRoute,
+    ...nearPickup.filter((c) => !alongRoute.some((s) => s.id === c.id)),
+  ];
   const routeError = routes.error as ApiClientError | null;
 
   return (
@@ -228,9 +273,27 @@ export function PlanScreen() {
           </Typography>
         </Box>
 
+        <PlaceSearch
+          label="From — search a place"
+          onSelect={(p: PlaceDto) => {
+            setPickup(p.location);
+            setPickupName(p.name);
+            setPicking(drop ? 'pickup' : 'drop');
+          }}
+        />
+        <PlaceSearch
+          label="To — search a place"
+          onSelect={(p: PlaceDto) => {
+            setDrop(p.location);
+            setDropName(p.name);
+            setPicking('pickup');
+          }}
+        />
+
         <PinRow
           label="A"
           point={pickup}
+          name={pickupName}
           colour="var(--series-1)"
           active={picking === 'pickup'}
           onFocus={() => setPicking('pickup')}
@@ -243,6 +306,7 @@ export function PlanScreen() {
         <PinRow
           label="B"
           point={drop}
+          name={dropName}
           colour="var(--series-2)"
           active={picking === 'drop'}
           onFocus={() => setPicking('drop')}
@@ -324,9 +388,12 @@ export function PlanScreen() {
                       {r.etaMinutes.toFixed(0)} min · {metres(r.distanceM)}
                     </Typography>
                   </Box>
-                  <Typography variant="caption" color="text.secondary" className="mt-0.5 block">
-                    {PROFILE_BLURB[r.profile]}
-                  </Typography>
+                  <Box className="mt-0.5 flex items-center justify-between gap-2">
+                    <Typography variant="caption" color="text.secondary">
+                      {PROFILE_BLURB[r.profile]}
+                    </Typography>
+                    {r.risk && <RiskChip risk={r.risk} />}
+                  </Box>
 
                   {active && (
                     <Box className="mt-3 grid grid-cols-4 gap-2">
@@ -336,9 +403,19 @@ export function PlanScreen() {
                       <Metric label="Energy" value={r.energyWh} unit="Wh" best={r.energyWh === bests.energy} />
                     </Box>
                   )}
+                  {active && r.risk && <RiskBreakdown risk={r.risk} />}
                 </Paper>
               );
             })}
+
+            <Button
+              variant="contained"
+              onClick={() =>
+                navigate(`/ride?from=${pickup![0]},${pickup![1]}&to=${drop![0]},${drop![1]}`)
+              }
+            >
+              Rent a vehicle for this trip
+            </Button>
 
             {selected && selected.snapDistanceM > 0 && (
               <Typography variant="caption" color="text.secondary">
@@ -404,18 +481,18 @@ export function PlanScreen() {
           </Box>
         )}
 
-        {/* ---- charging on the way ---- */}
-        {selected && (
+        {/* ---- charging near the pickup and on the way ---- */}
+        {(selected || nearPickup.length > 0) && (
           <Box className="flex flex-col gap-2">
             <Typography variant="overline" color="text.secondary">
-              Charging on the way
+              Charging near you and on the way
             </Typography>
             {stations.isPending ? (
               <LoadingState rows={2} />
             ) : stationList.length === 0 ? (
               <Typography variant="body2" color="text.secondary">
-                No charging point within 700 m of this route. A planner can add one from the Admin
-                screen.
+                No charging point near your pickup or within 700 m of this route. A planner can add one
+                from the Admin screen.
               </Typography>
             ) : (
               stationList.map((s) => (
@@ -437,7 +514,15 @@ export function PlanScreen() {
                       {s.connectors} points · {s.powerKw} kW
                     </Typography>
                   </Box>
-                  <Chip size="small" variant="outlined" label={`${s.distanceM ?? 0} m`} />
+                  <Chip
+                    size="small"
+                    variant="outlined"
+                    label={
+                      alongRoute.some((a) => a.id === s.id)
+                        ? `${s.distanceM ?? 0} m off route`
+                        : `${s.distanceM ?? 0} m from pickup`
+                    }
+                  />
                 </Box>
               ))
             )}

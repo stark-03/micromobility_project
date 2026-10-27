@@ -9,6 +9,8 @@ import {
   HexagonOutlined,
   InsertChartOutlined,
   MapOutlined,
+  PedalBikeOutlined,
+  ReceiptLongOutlined,
   SettingsOutlined,
   TwoWheelerOutlined,
 } from '@mui/icons-material';
@@ -36,6 +38,8 @@ interface Destination {
 const DESTINATIONS: Destination[] = [
   { key: 'live', label: 'Live', icon: <MapOutlined />, path: '/live' },
   { key: 'plan', label: 'Plan', icon: <ExploreOutlined />, path: '/plan' },
+  { key: 'ride', label: 'Ride', icon: <PedalBikeOutlined />, path: '/ride' },
+  { key: 'trips', label: 'Trips', icon: <ReceiptLongOutlined />, path: '/trips' },
   { key: 'sim', label: 'Sim', icon: <HexagonOutlined />, path: '/sim' },
   { key: 'fleet', label: 'Fleet', icon: <TwoWheelerOutlined />, path: '/fleet' },
   { key: 'data', label: 'Data', icon: <InsertChartOutlined />, path: '/data' },

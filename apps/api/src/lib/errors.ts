@@ -27,6 +27,16 @@ export const STATUS_BY_CODE: Record<ErrorCode, number> = {
   PLAN_NOT_FOUND: 404,
   TASK_NOT_FOUND: 404,
   STATION_NOT_FOUND: 404,
+  RENTAL_NOT_FOUND: 404,
+  // The vehicle exists but cannot be ridden right now: in use, charging,
+  // in the workshop, or too flat to finish a ride.
+  VEHICLE_NOT_RENTABLE: 409,
+  RENTAL_ALREADY_ACTIVE: 409,
+  // A return is verified by position. Ending a ride away from a station is a
+  // request the rider can fix by moving, so 422 rather than 409.
+  RETURN_NOT_AT_STATION: 422,
+  STATION_FULL: 409,
+  PAYMENT_FAILED: 402,
   SERVICE_UNAVAILABLE: 503,
   RATE_LIMITED: 429,
   INTERNAL_ERROR: 500,

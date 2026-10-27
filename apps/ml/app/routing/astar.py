@@ -3,11 +3,17 @@
 import networkx as nx
 
 from .costs import Profile, congestion_delay_seconds, free_flow_seconds
-from .graph import build_graph, haversine_m, heuristic, nearest_node
+from .graph import build_graph, haversine_m, heuristic, nearest_node, routable_nodes
 
 
 class NoRouteError(Exception):
     """Raised when origin and destination are not connected."""
+
+
+# Farthest a pin may be moved to reach the routable network. Snapping is meant
+# to cover the gap between a doorstep and the street; past this, the point is
+# genuinely off the network and saying so beats routing somewhere else.
+MAX_SNAP_M = 750.0
 
 
 def plan_route(
@@ -22,10 +28,19 @@ def plan_route(
     if g.number_of_nodes() == 0:
         raise NoRouteError("The road network is empty for this mode")
 
-    start = nearest_node(g, origin)
-    goal = nearest_node(g, destination)
+    # Snap both ends into the same strongly connected network, so a route
+    # between them always exists. The snap distance is reported back, so a
+    # rider whose pin moved is told how far.
+    network = routable_nodes(g)
+    start = nearest_node(g, origin, network)
+    goal = nearest_node(g, destination, network)
     if start is None or goal is None:
         raise NoRouteError("Could not snap origin or destination onto the network")
+    for label, node, point in (("Pickup", start, origin), ("Destination", goal, destination)):
+        if haversine_m(tuple(g.nodes[node]["pos"]), point) > MAX_SNAP_M:
+            raise NoRouteError(
+                f"{label} is more than {MAX_SNAP_M:.0f} m from any road the router can use"
+            )
     if start == goal:
         raise NoRouteError("Origin and destination snap to the same junction")
 

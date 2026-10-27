@@ -5,10 +5,20 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { CssBaseline, ThemeProvider } from '@mui/material';
 import { createAppTheme } from '../src/app/theme.ts';
 import { PlanScreen } from '../src/modules/plan/index.ts';
+import { RiskBreakdown, RiskChip } from '../src/modules/plan/RiskSummary.tsx';
 import { useAuthStore } from '../src/lib/auth-store.ts';
+import type { RouteRiskDto } from '@mm/shared-types';
 import zonesFixture from './fixtures/zones.json' with { type: 'json' };
 
 const theme = createAppTheme();
+
+const risk: RouteRiskDto = {
+  score: 47.5,
+  level: 'medium',
+  factors: { accidents: 62, roadQuality: 40, traffic: 30, lighting: 20, infrastructure: 70 },
+  incidentCount: 3,
+  unsurveyedPct: 12,
+};
 
 /**
  * Leaflet needs a 2D canvas context, which jsdom does not implement. Stubbing
@@ -42,6 +52,7 @@ beforeEach(() => {
       if (u.includes('/geo/zones')) return json(zonesFixture);
       if (u.includes('/charging/vehicles/near')) return json([]);
       if (u.includes('/charging/stations/along-route')) return json([]);
+      if (u.includes('/charging/stations/near')) return json([]);
       return json({ routes: [] });
     }),
   );
@@ -98,5 +109,28 @@ describe('PlanScreen', () => {
   it('lets a rider choose the vehicle they are planning for', async () => {
     wrap(<PlanScreen />);
     expect(await screen.findByLabelText('Vehicle')).toBeDefined();
+  });
+
+  it('lets a rider choose places by name instead of on the map', async () => {
+    wrap(<PlanScreen />);
+    expect(await screen.findByLabelText('From — search a place')).toBeDefined();
+    expect(screen.getByLabelText('To — search a place')).toBeDefined();
+  });
+});
+
+describe('route risk', () => {
+  it('names the band in words, not colour alone', () => {
+    wrap(<RiskChip risk={risk} />);
+    expect(screen.getByText('Medium risk')).toBeDefined();
+  });
+
+  it('explains the score with all five factors and the incident count', () => {
+    wrap(<RiskBreakdown risk={risk} />);
+    expect(screen.getByText('Why this route is medium risk')).toBeDefined();
+    for (const label of ['Accident history', 'Traffic', 'Cycling infrastructure', 'Street lighting', 'Road quality']) {
+      expect(screen.getByText(label)).toBeDefined();
+    }
+    expect(screen.getByText(/3 recorded incidents on this route/)).toBeDefined();
+    expect(screen.getByText(/12% of it has no road-surface survey/)).toBeDefined();
   });
 });

@@ -215,3 +215,26 @@ def test_compare_of_a_run_with_itself_is_all_zero():
     rows = compare(m, m)
     assert rows
     assert all(r["delta"] == 0 and r["direction"] == "same" for r in rows)
+
+
+# ---- energy ------------------------------------------------------------------
+
+
+def test_energy_is_reported_and_pedal_bikes_use_none():
+    m = run(spec())
+    assert m["energyKwh"] > 0.0
+    assert m["whPerTrip"] == pytest.approx(1000.0 * m["energyKwh"] / m["tripsServed"], rel=1e-2)
+
+    bikes_only = run(spec(fleet=FleetMix(scooter=0, ebike=0, bike=40)))
+    assert bikes_only["tripsServed"] > 0
+    assert bikes_only["energyKwh"] == 0.0
+
+
+def test_total_energy_compares_as_neutral_and_per_trip_energy_as_lower_is_better():
+    base = {"energyKwh": 10.0, "whPerTrip": 20.0}
+    more = {"energyKwh": 12.0, "whPerTrip": 22.0}
+    rows = {r["metric"]: r["direction"] for r in compare(base, more)}
+
+    # More total energy is what serving more trips costs — not a verdict.
+    assert rows["energyKwh"] == "neutral"
+    assert rows["whPerTrip"] == "worse"

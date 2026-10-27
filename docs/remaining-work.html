@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Remaining Work</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Same palette as docs/viva-run-of-show.html and the user manual. */
+:root {
+  --ground: #f4f7fb; --surface: #ffffff; --raised: #eaf0f8;
+  --line: #d3dded; --line-soft: #e4ebf5;
+  --text: #0d1424; --muted: #55668a;
+  --accent: #2c6fd6; --accent-dim: #dce8fb;
+  --gold: #8a5f0f; --gold-dim: #f7eeda;
+  --ok: #17805a; --ok-dim: #dcf2e8;
+  --danger: #c0272c; --danger-dim: #fbe3e4;
+  --font-display: 'Archivo', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+}
+@page { size: A4; margin: 16mm 15mm 18mm; }
+* { box-sizing: border-box; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body { margin: 0; background: var(--surface); color: var(--text);
+       font: 10pt/1.5 var(--font-body); }
+main { max-width: 180mm; margin: 0 auto; padding: 0 16px; }
+h1, h2, h3 { font-family: var(--font-display); line-height: 1.2; margin: 0; }
+h1 { font-size: 24pt; letter-spacing: -.01em; }
+h2 { font-size: 14.5pt; margin: 22px 0 8px; padding-bottom: 5px; border-bottom: 2px solid var(--line); }
+h3 { font-size: 11.5pt; }
+p { margin: 0 0 8px; }
+code { font: 8.6pt var(--font-mono); background: var(--raised); padding: 1px 4px; border-radius: 4px; }
+ul, ol { margin: 0 0 8px; padding-left: 18px; }
+li { margin-bottom: 3px; }
+
+.cover { padding: 6px 0 14px; border-bottom: 1px solid var(--line); margin-bottom: 14px; }
+.kicker { font: 600 8.5pt var(--font-body); text-transform: uppercase; letter-spacing: .1em; color: var(--accent); margin-bottom: 6px; }
+.sub { color: var(--muted); font-size: 10.5pt; margin-top: 6px; }
+.meta { color: var(--muted); font-size: 8.5pt; margin-top: 10px; }
+
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 12px 0 4px; }
+.stat { background: var(--ground); border: 1px solid var(--line-soft); border-radius: 9px; padding: 9px 11px; }
+.stat b { display: block; font: 700 17pt var(--font-display); }
+.stat span { color: var(--muted); font-size: 8.5pt; }
+
+table { width: 100%; border-collapse: collapse; margin: 6px 0 10px; font-size: 9pt; }
+th { text-align: left; font-weight: 600; background: var(--raised); color: var(--text); padding: 6px 8px; border-bottom: 1px solid var(--line); }
+td { padding: 6px 8px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+tr { break-inside: avoid; }
+
+.tag { display: inline-block; font: 600 7.5pt var(--font-body); text-transform: uppercase; letter-spacing: .06em; padding: 2px 7px; border-radius: 99px; white-space: nowrap; }
+.crit { background: var(--danger-dim); color: var(--danger); }
+.high { background: var(--gold-dim); color: var(--gold); }
+.med  { background: var(--accent-dim); color: var(--accent); }
+.done { background: var(--ok-dim); color: var(--ok); }
+
+.callout { background: var(--danger-dim); border-left: 3px solid var(--danger); border-radius: 0 9px 9px 0; padding: 9px 12px; margin: 10px 0; }
+.note { background: var(--ground); border-left: 3px solid var(--accent); border-radius: 0 9px 9px 0; padding: 9px 12px; margin: 10px 0; font-size: 9.3pt; }
+
+.task { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin: 12px 0; break-inside: avoid; }
+.task-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+.task-head .num { font: 700 11.5pt var(--font-display); color: var(--muted); }
+.task-head .effort { margin-left: auto; color: var(--muted); font-size: 8.5pt; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px; }
+.lbl { font: 600 7.8pt var(--font-body); text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin-bottom: 3px; }
+.box p, .box ul { font-size: 9.2pt; }
+.check { background: var(--ok-dim); border-radius: 8px; padding: 7px 10px; font-size: 9pt; }
+.check .lbl { color: var(--ok); }
+.check ul { margin: 0; }
+
+.break { break-before: page; }
+.foot { color: var(--muted); font-size: 8pt; border-top: 1px solid var(--line); padding-top: 8px; margin-top: 18px; }
+
+@media (max-width: 640px) {
+  .stats { grid-template-columns: repeat(2, 1fr); }
+  .grid2 { grid-template-columns: 1fr; }
+  table { display: block; overflow-x: auto; }
+}
+</style>
+</head>
+<body>
+<main>
+
+<section class="cover">
+  <div class="kicker">AI Urban Micro Mobility Simulator · Gap analysis</div>
+  <h1>What is left to build</h1>
+  <p class="sub">The repository compared with the <em>Detailed Project Approach</em> PDF, and the work
+  needed to close each gap.</p>
+  <p class="meta">Prepared 15 October 2026 · Based on commit <code>358a456</code> on <code>master</code> ·
+  Based on reading the code. The test suite and the app were not run for this review.</p>
+</section>
+
+<div class="stats">
+  <div class="stat"><b>~60–65%</b><span>of the approach document is in place</span></div>
+  <div class="stat"><b>5 / 11</b><span>deliverables fully done</span></div>
+  <div class="stat"><b>7</b><span>tasks left (1 critical, 3 high)</span></div>
+  <div class="stat"><b>6–8 days</b><span>rough estimate for one developer</span></div>
+</div>
+
+<div class="callout">
+  <b>The one that matters most.</b> The approach document says the AI component is a model that
+  <b>predicts traffic</b>, and that prediction must feed route scoring (§6, §18). The model in the
+  repository predicts <b>rider demand</b>. Routing takes congestion straight from the stored traffic
+  snapshots, and no model touches it. As things stand, an examiner could fairly call the router
+  "A* with an AI label", which the document warns against. Task 1 fixes this. Do it first.
+</div>
+
+<h2>1. Status of each deliverable</h2>
+<p>Deliverables as listed in §17 of the approach document.</p>
+<table>
+  <thead><tr><th style="width:4%">#</th><th style="width:34%">Deliverable</th><th style="width:13%">Status</th><th>What exists today</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>Python backend for routing and simulation</td><td><span class="tag done">Done</span></td><td>FastAPI service in <code>apps/ml</code></td></tr>
+    <tr><td>2</td><td>Dijkstra baseline, optional A*</td><td><span class="tag high">Half</span></td><td>A* only (<code>routing/astar.py</code>). No Dijkstra, no comparison of the two</td></tr>
+    <tr><td>3</td><td>Synthetic road and traffic datasets</td><td><span class="tag done">Done</span></td><td>Seeded Belagavi network on real OpenStreetMap streets, plus the synthetic traffic generator</td></tr>
+    <tr><td>4</td><td>ML traffic-prediction model</td><td><span class="tag crit">Missing</span></td><td>A LightGBM model exists, but it predicts demand, not traffic</td></tr>
+    <tr><td>5</td><td>Travel-time and energy modules</td><td><span class="tag med">Mostly</span></td><td>Travel time slows with congestion. Energy is Wh per km plus climbing, with no traffic or stop factor</td></tr>
+    <tr><td>6</td><td>Multi-factor route optimizer</td><td><span class="tag high">Partial</span></td><td>Weighted cost per road segment, with 3 fixed profiles. No normalized score per route, and the weights can't be changed</td></tr>
+    <tr><td>7</td><td>FastAPI endpoints</td><td><span class="tag done">Done</span></td><td>Endpoints exist under different names (<code>/internal/routing/*</code>, <code>/internal/sim/*</code>)</td></tr>
+    <tr><td>8</td><td>Interactive Leaflet map</td><td><span class="tag done">Done</span></td><td>Leaflet with OpenStreetMap streets</td></tr>
+    <tr><td>9</td><td>Simulation controls and comparison dashboard</td><td><span class="tag high">Partial</span></td><td>Plan screen compares 3 routes. The simulation runs for the whole fleet; no single e-bike is animated and there are no start/pause/reset buttons</td></tr>
+    <tr><td>10</td><td>Evaluation results for several scenarios</td><td><span class="tag high">Partial</span></td><td>Fleet scenarios can be compared. The 6 test scenarios in §13 have not been run and recorded</td></tr>
+    <tr><td>11</td><td>Report, diagrams, test cases, presentation</td><td><span class="tag done">Done</span></td><td>Final report, user manual and viva guide, plus 41 test files. These need updating after the tasks below</td></tr>
+  </tbody>
+</table>
+
+<h2>2. Recommended order</h2>
+<p>The order follows the approach document's own rule (§15): baseline first, then the AI layer and
+optimization, then simulation, then evaluation.</p>
+<table>
+  <thead><tr><th style="width:5%">#</th><th>Task</th><th style="width:13%">Priority</th><th style="width:16%">Rough effort</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>Traffic-prediction model, wired into routing</td><td><span class="tag crit">Critical</span></td><td>1.5–2 days</td></tr>
+    <tr><td>2</td><td>Dijkstra baseline and comparison with A*</td><td><span class="tag high">High</span></td><td>2–3 hours</td></tr>
+    <tr><td>3</td><td>Normalized score per route, with weights you can adjust</td><td><span class="tag high">High</span></td><td>1 day</td></tr>
+    <tr><td>4</td><td>Step-by-step simulation of one e-bike, animated on the map</td><td><span class="tag high">High</span></td><td>1.5–2 days</td></tr>
+    <tr><td>5</td><td>Add traffic and stop factors to the energy model</td><td><span class="tag med">Medium</span></td><td>Half a day</td></tr>
+    <tr><td>6</td><td>Run and record the 6 evaluation scenarios</td><td><span class="tag med">Medium</span></td><td>1 day</td></tr>
+    <tr><td>7</td><td>Update the report, viva guide and user manual</td><td><span class="tag med">Medium</span></td><td>Half a day</td></tr>
+  </tbody>
+</table>
+<p class="note">The effort figures are rough estimates, not measurements. They assume someone who
+already knows this codebase.</p>
+
+<h2 class="break">3. Tasks in detail</h2>
+
+<div class="task">
+  <div class="task-head"><span class="num">01</span><h3>Traffic-prediction model, wired into routing</h3><span class="tag crit">Critical</span><span class="effort">1.5–2 days</span></div>
+  <div class="grid2">
+    <div class="box"><div class="lbl">The approach document asks for</div>
+      <p>A model trained on traffic history, using the features in §6: hour, day of week, road id,
+      distance, road type and previous traffic. Its prediction is the traffic value used for
+      travel time and route scoring.</p></div>
+    <div class="box"><div class="lbl">The repository has</div>
+      <p><code>models/demand.py</code> predicts rider demand per zone. Routing reads
+      <code>COALESCE(ts.congestion_index, 0)</code> from <code>traffic_snapshots</code>
+      (<code>routes/service.ts</code>), so no prediction is involved.</p></div>
+  </div>
+  <div class="lbl">Work</div>
+  <ol>
+    <li>Add <code>apps/ml/app/models/traffic.py</code>. Copy the demand model's structure: LightGBM,
+    chronological train/test split, MAE/RMSE/MAPE against a seasonal-naive baseline, and an entry in
+    <code>model_registry</code>. The training data is the existing synthetic traffic history.</li>
+    <li>Features: <code>hour</code>, <code>day_of_week</code>, <code>segment_id</code> (categorical),
+    <code>length_m</code>, <code>road_class</code>, and lagged congestion for the previous slot and
+    the same slot yesterday. Target: <code>congestion_index</code>.</li>
+    <li>Add <code>POST /internal/ml/predict/traffic</code>. It takes an hour and a day and returns
+    predicted congestion for every segment in one batch. Cache the result through
+    <code>cache/index.ts</code> (e.g. <code>traffic:pred:&lt;day&gt;:&lt;hour&gt;</code>).
+    Training runs as a job, never inside a request.</li>
+    <li>Give route planning a <b>traffic source</b> option: <i>live snapshot</i> (today's behaviour)
+    or <i>AI prediction for a chosen time</i>. With the second option, the predicted congestion
+    replaces the snapshot value on every edge before A* runs.</li>
+    <li>On the Plan screen, add a time-of-day control (morning, afternoon, evening, peak) and a
+    traffic-scenario control (low, medium, high or predicted).</li>
+  </ol>
+  <div class="check"><div class="lbl">Done when</div><ul>
+    <li>The model is recorded in <code>model_registry</code> with its metrics and beats the seasonal-naive baseline</li>
+    <li>Planning the same trip for 03:00 and for evening peak gives different congestion, and on at least one trip a different route</li>
+    <li>A pytest test asserts that predictions are in the range 0–1 and that training is reproducible with a fixed seed</li>
+  </ul></div>
+</div>
+
+<div class="task">
+  <div class="task-head"><span class="num">02</span><h3>Dijkstra baseline and comparison with A*</h3><span class="tag high">High</span><span class="effort">2–3 hours</span></div>
+  <div class="grid2">
+    <div class="box"><div class="lbl">The approach document asks for</div>
+      <p>Dijkstra as the traditional baseline, built with the 7 steps in §5. A* comes after it as an
+      optional improvement, and the two are compared on the same graph.</p></div>
+    <div class="box"><div class="lbl">The repository has</div>
+      <p>Only A*, through <code>nx.astar_path</code>. The word "dijkstra" does not appear anywhere
+      in the code.</p></div>
+  </div>
+  <div class="lbl">Work</div>
+  <ol>
+    <li>Write <code>apps/ml/app/routing/dijkstra.py</code> by hand with <code>heapq</code>, following
+    the document's steps: initial distances, a priority queue, edge relaxation and a predecessor map.
+    A hand-written version is easier to explain in the viva than a library call. Count how many
+    nodes it settles.</li>
+    <li>Add an <code>algorithm</code> parameter (<code>dijkstra</code> or <code>astar</code>) to the
+    plan endpoint, and return <code>computeMs</code> and <code>nodesExpanded</code> with every route.</li>
+    <li>Show both on the Plan screen: same route and cost, different compute time and number of
+    nodes explored.</li>
+  </ol>
+  <div class="check"><div class="lbl">Done when</div><ul>
+    <li>A test asserts that hand-written Dijkstra, <code>nx.dijkstra_path</code> and A* give the same total cost on a set of random origin–destination pairs</li>
+    <li>A* expands fewer nodes than Dijkstra on long trips</li>
+  </ul></div>
+</div>
+
+<div class="task">
+  <div class="task-head"><span class="num">03</span><h3>Normalized score per route, with weights you can adjust</h3><span class="tag high">High</span><span class="effort">1 day</span></div>
+  <div class="grid2">
+    <div class="box"><div class="lbl">The approach document asks for</div>
+      <p>Generate several candidate routes, then compute each route's metrics and normalize them.
+      Score = 0.40·Distance + 0.30·Time + 0.20·Traffic + 0.10·Energy, and the lowest score wins.
+      Keep the other routes for comparison, and support experiments that change the weights
+      (§8, §13 scenario 6).</p></div>
+    <div class="box"><div class="lbl">The repository has</div>
+      <p>Weights apply to each road segment's cost inside A* (<code>costs.py</code>). There are
+      3 fixed profiles, and each produces one route. Nothing scores whole routes against each other
+      or picks a winner that way.</p></div>
+  </div>
+  <div class="lbl">Work</div>
+  <ol>
+    <li>Add <code>apps/ml/app/optimization/route_optimizer.py</code>. Collect candidates from the
+    3 existing profiles plus the pure shortest-distance route. Optionally add k-shortest paths
+    (<code>nx.shortest_simple_paths</code>), with k capped so a response stays under 300 ms.
+    Remove duplicate routes.</li>
+    <li>Scale each metric to 0–1 with min–max across the candidates (if every candidate has the
+    same value, use 0). Apply the weights and pick the lowest score.</li>
+    <li>Add <code>POST /internal/routing/optimize</code>. It takes the weights and returns every
+    candidate with its raw metrics, normalized metrics and score, plus the id of the winner.</li>
+    <li>Plan screen: weight sliders (kept summing to 1) and an <i>AI-optimized</i> badge on the
+    winning route. Show the other candidates as thinner or greyed-out lines on the map, and add a
+    score column to the comparison table.</li>
+  </ol>
+  <div class="check"><div class="lbl">Done when</div><ul>
+    <li>A test with three hand-built candidates reproduces the worked example in §16: route B wins even though it isn't the shortest</li>
+    <li>Moving the weight sliders changes the winning route on at least one trip in the demo</li>
+  </ul></div>
+</div>
+
+<div class="task">
+  <div class="task-head"><span class="num">04</span><h3>Step-by-step simulation of one e-bike, animated on the map</h3><span class="tag high">High</span><span class="effort">1.5–2 days</span></div>
+  <div class="grid2">
+    <div class="box"><div class="lbl">The approach document asks for</div>
+      <p>One e-bike moving along the chosen route, segment by segment. Its state is
+      <code>current_node</code>, <code>current_edge</code>, distance travelled, elapsed time,
+      energy used, traffic level and status. The screen shows start/pause/reset, a live metric
+      panel and a comparison chart at the end (§9, §10).</p></div>
+    <div class="box"><div class="lbl">The repository has</div>
+      <p>A SimPy engine that models the whole fleet moving between zones
+      (<code>sim/engine.py</code>, which describes itself as working at zone level). The web app
+      has no animation code.</p></div>
+  </div>
+  <div class="lbl">Work</div>
+  <ol>
+    <li>Add <code>apps/ml/app/sim/journey.py</code>. Given a route's steps, it walks them at a fixed
+    time step (for example 1 second) and outputs a trace. Each frame records position, the
+    document's state variables, and the effective speed for that segment. Keep this logic on the
+    server; React only plays the trace back.</li>
+    <li>Add <code>POST /internal/sim/journey</code>, plus an API route that saves each run to a new
+    <code>route_simulations</code> table with the fields from §12: source, destination, scenario,
+    selected route, distance, time, energy, traffic, score and created time. Add a matching
+    <code>GET</code> for past results.</li>
+    <li>Plan screen: an e-bike marker that moves along the route, start/pause/reset and playback-speed
+    buttons, and a live panel showing distance, elapsed time, current traffic and energy.</li>
+    <li>When the run finishes, show a bar chart (Recharts) comparing the chosen route with the other
+    candidates on distance, time, traffic and energy.</li>
+  </ol>
+  <div class="check"><div class="lbl">Done when</div><ul>
+    <li>The trace's final totals match the route's distance, time and energy (a pytest test checks this)</li>
+    <li>Pause, resume and reset work, and a saved run can be reopened and played again</li>
+  </ul></div>
+</div>
+
+<div class="task">
+  <div class="task-head"><span class="num">05</span><h3>Add traffic and stop factors to the energy model</h3><span class="tag med">Medium</span><span class="effort">Half a day</span></div>
+  <p>Today the energy figure is Wh per km plus a climbing term (<code>astar.py</code>). The document's
+  model (§7.2) is Energy ≈ Distance × BaseConsumption × TrafficFactor × SlopeFactor × StopFactor.
+  Move the energy calculation into <code>apps/ml/app/sim/energy.py</code> and add two factors:
+  a traffic factor that grows with congestion (stop-and-go riding) and a stop factor based on the number
+  of junctions on the route (nodes with three or more roads meeting). Keep the coefficients as named,
+  documented constants, since the document calls them "simulation parameters".</p>
+  <div class="check"><div class="lbl">Done when</div><ul>
+    <li>Two routes of similar length but different congestion or junction counts give clearly different energy figures, and a test checks this</li>
+  </ul></div>
+</div>
+
+<div class="task">
+  <div class="task-head"><span class="num">06</span><h3>Run and record the 6 evaluation scenarios</h3><span class="tag med">Medium</span><span class="effort">1 day</span></div>
+  <p>Write a script (for example <code>scripts/evaluate-routing.mjs</code>, or a pytest module) that
+  runs each scenario from §13 on fixed trips and writes the results to
+  <code>docs/evaluation-results.md</code>. Each result records distance, time, traffic exposure,
+  energy, score and <b>computation time</b>.</p>
+  <table>
+    <thead><tr><th style="width:5%">#</th><th style="width:30%">Scenario</th><th>Expected behaviour</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Low traffic</td><td>The shortest route wins or is close to winning</td></tr>
+      <tr><td>2</td><td>Heavy traffic on the shortest route</td><td>The optimizer picks a different route</td></tr>
+      <tr><td>3</td><td>Steep route</td><td>The energy term counts against it</td></tr>
+      <tr><td>4</td><td>Peak hour (predicted traffic)</td><td>The selection differs from the off-peak selection</td></tr>
+      <tr><td>5</td><td>Low-energy weighting</td><td>The route with the lowest energy wins</td></tr>
+      <tr><td>6</td><td>Changing the weights</td><td>A table showing which route wins as the weights change</td></tr>
+    </tbody>
+  </table>
+  <div class="check"><div class="lbl">Done when</div><ul>
+    <li>All 6 scenarios run with one command and give the same results on every run (fixed seed)</li>
+    <li>The results table is in the repo, ready to drop into the report</li>
+  </ul></div>
+</div>
+
+<div class="task">
+  <div class="task-head"><span class="num">07</span><h3>Update the report, viva guide and user manual</h3><span class="tag med">Medium</span><span class="effort">Half a day</span></div>
+  <ul>
+    <li><b>Report:</b> add the traffic model's metrics, the Dijkstra vs A* comparison, the scoring
+    formula, the evaluation table and screenshots of the animated journey.</li>
+    <li><b>Viva guide:</b> rewrite the answer to "Where is AI used?" around the traffic prediction
+    feeding the route score (§18), and add a demo step that changes the time of day and shows the
+    route change.</li>
+    <li><b>User manual:</b> document the new Plan-screen controls (traffic source, time of day,
+    weight sliders, simulation playback).</li>
+    <li><code>MODULES.md</code>: add the new endpoint contracts. Write an ADR on why routing scores
+    whole routes, and how that sits alongside the per-segment profile weights.</li>
+  </ul>
+</div>
+
+<h2>4. Built beyond the approach document</h2>
+<p>§1 of the document excludes user accounts, payments, booking, rental, station management and
+fleet management. The repository includes accounts and roles, a vehicle registry, fleet rebalancing
+by linear programming, charging stations, live traffic over sockets, weather, analytics and a GBFS
+feed. <b>Keep all of it.</b> It works, and removing it would only add risk. Present it in the viva as
+the platform the simulator runs on, and keep the demo focused on the e-bike route-optimization
+workflow, because that is what the document grades.</p>
+<p>The stack also differs from the document's suggestion (React, Express and MySQL instead of plain
+HTML/JS and SQLite). Be ready to explain why in one sentence: the project is built to grow past a
+single-user prototype.</p>
+
+<p class="foot">AI Urban Micro Mobility Simulator · Remaining work · Source: <code>docs/remaining-work.html</code></p>
+</main>
+</body>
+</html>

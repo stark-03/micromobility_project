@@ -75,15 +75,34 @@ def build_graph(edges: list[dict], profile: Profile, mode: str) -> nx.DiGraph:
     return g
 
 
-def nearest_node(g: nx.DiGraph, point: tuple[float, float]) -> str | None:
+def routable_nodes(g: nx.DiGraph) -> set[str]:
+    """Junctions in the main strongly connected part of the network.
+
+    Any junction here can reach every other one and be reached from it. The
+    rest are the OSM import's loose ends: junctions a one-way street leaves but
+    none enters, and fragments clipped off at the edge of the city. They are
+    under 1% of Belagavi's junctions, but snapping onto one makes a route
+    impossible however close the rider's point is to a good road.
+    """
+    if g.number_of_nodes() == 0:
+        return set()
+    return max(nx.strongly_connected_components(g), key=len)
+
+
+def nearest_node(
+    g: nx.DiGraph, point: tuple[float, float], candidates: set[str] | None = None
+) -> str | None:
     """Graph node closest to an arbitrary coordinate.
 
     Riders do not start at junctions, so origin and destination are snapped onto
-    the network before the search begins.
+    the network before the search begins. Pass `candidates` to snap only onto
+    junctions that can actually be routed between.
     """
     best: str | None = None
     best_d = float("inf")
     for node, data in g.nodes(data=True):
+        if candidates is not None and node not in candidates:
+            continue
         pos = data.get("pos")
         if pos is None:
             continue

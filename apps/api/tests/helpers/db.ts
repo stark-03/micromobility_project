@@ -47,6 +47,10 @@ ensureModels(testDb);
  * order correct means this still works if that ever stops being true.
  */
 const TABLES = [
+  // Rentals: points and payments reference trips; incidents reference segments.
+  'trip_points',
+  'payments',
+  'incidents',
   // Charging infrastructure. References zones and users.
   'charging_stations',
   // M11/M10 rollups. Derived data; safe to wipe between tests.
@@ -78,6 +82,9 @@ const TABLES = [
   'audit_logs',
   'api_keys',
   'vehicles',
+  // After vehicles and trips, which reference it. pricing_plans is reference
+  // data seeded by its migration, like emission_factors, and is never truncated.
+  'rental_stations',
   'road_segments',
   'users',
   'zones',

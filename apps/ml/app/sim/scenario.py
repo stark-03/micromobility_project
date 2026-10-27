@@ -23,6 +23,10 @@ CO2_G_PER_KM: dict[str, float] = {
     "bike": 0.0,
 }
 
+# Watt-hours drawn from the battery per kilometre ridden. Same figures as the
+# API's emission_factors table, so a simulated kWh and a measured one compare.
+WH_PER_KM: dict[str, float] = {"scooter": 32.0, "ebike": 12.0, "bike": 0.0}
+
 # Cruising speed on flat ground, free of traffic.
 SPEED_KPH: dict[str, float] = {"scooter": 20.0, "ebike": 22.0, "bike": 15.0}
 

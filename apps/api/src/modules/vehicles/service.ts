@@ -51,12 +51,14 @@ function operatorScope(caller: Caller): string | null {
 const VEHICLE_SELECT = `
   SELECT v.id, v.operator_id, o.name AS operator_name,
          v.home_zone_id, z.name AS home_zone_name,
-         v.external_ref, v.type, v.status, v.battery_pct, v.last_seen_at,
+         v.external_ref, v.unlock_code, v.station_id, rs.name AS station_name,
+         v.type, v.status, v.battery_pct, v.last_seen_at,
          ${selectGeom('v.last_position', 'last_wkt')},
          v.created_at, v.updated_at
   FROM vehicles v
   LEFT JOIN operators o ON o.id = v.operator_id
   LEFT JOIN zones z     ON z.id = v.home_zone_id
+  LEFT JOIN rental_stations rs ON rs.id = v.station_id
 `;
 
 export interface VehiclePage {

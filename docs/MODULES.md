@@ -180,7 +180,7 @@ GET    /api/v1/predictions/congestion?segmentId=
 - Runs as a background job (job runner → Python worker); progress streamed over WebSocket.
 - Deterministic seeds so a run is reproducible; results persisted for side-by-side comparison.
 
-**Outputs per run.** Trips served / unserved, mean wait, mean trip time, vehicle utilization, distance travelled empty vs loaded, congestion delta, emissions avoided, safety incidents.
+**Outputs per run.** Trips served / unserved, mean wait, mean trip time, vehicle utilization, distance travelled empty vs loaded, congestion delta, emissions avoided, energy used (`energyKwh`, compared as neutral) and energy per trip (`whPerTrip`, lower is better), safety incidents.
 
 **Tables**
 `scenarios`, `simulation_runs`, `simulation_metrics`, `simulation_events`
@@ -278,52 +278,52 @@ ML service (`plan_charging`) but Express does not yet store its output.
 
 ## M08 — Parking & Docking
 
-> **Not built.** Skipped in Sprint 5 under a one-day budget. It is largely a station registry plus a point-in-polygon check; neither teaches anything the zone model does not already demonstrate, and both are additive to a working system. Nothing else depends on it.
+> **Built (rental stations).** Station registry, live inventory and verified returns are built; see ADR 0004. Geofenced parking areas, no-park zones and the occupancy forecast are not.
 
-**Purpose.** Parking zones, docking stations, availability, and no-park geofences.
+**Purpose.** Docking stations, availability, and where a ride may end.
 
 **Responsibilities**
-- Station registry with capacity and live occupancy; virtual (geofenced) parking areas.
-- Nearest-available-parking lookup at trip end; block trip end inside a no-park polygon.
-- Occupancy forecast reuses the M05 demand pipeline at station granularity.
+- Station registry with capacity and a return radius.
+- Live inventory by vehicle type: rentable vs. unavailable (charging, maintenance, reserved, or below 15% battery). Derived from `vehicles.station_id` and status on every read, never stored.
+- Free docks = capacity − vehicles docked. A return is refused at a full station.
+- Nearest station to a point, for verifying a return.
 
 **Tables**
-`stations`, `station_occupancy`, `parking_zones` (polygon), `no_park_zones`, `parking_events`
+`rental_stations`; `vehicles.station_id`, `vehicles.unlock_code` (migration 28)
 
 **API**
 ```
-GET    /api/v1/parking/stations?near=lat,lng&radius=
-GET    /api/v1/parking/stations/:id/availability
-POST   /api/v1/parking/validate          # {vehicleId, lat, lng} → allowed | reason
-GET    /api/v1/parking/forecast?stationId=
+GET    /api/v1/stations                         # all, with inventory
+GET    /api/v1/stations/near?lng=&lat=&radiusM=  # nearest first, with inventory and distanceM
+GET    /api/v1/stations/:id                     # plus each vehicle's battery %, capacity Wh, range
+POST   /api/v1/stations                         # planner, admin
 ```
 
-**Screens.** Parking layer on map, Station detail, Geofence editor (planner).
+**Screens.** Ride (stations near the rider, vehicles in each, map markers showing the rentable count).
 
 ---
 
 ## M09 — Safety & Risk Analysis
 
+> **Partly built: route risk.** Every planned route gets a risk score, a low/medium/high band and its factors. Kernel-density risk zones, telemetry event detection and the safety report are not built.
+
 **Purpose.** Find accident-prone areas and risky conditions; score segments for M04.
 
 **Responsibilities**
-- Kernel-density clustering of historical incidents → risk zones.
-- Per-segment `safety_score` (0–100) from incident rate, lighting, lane type, speed differential, weather.
-- Hard-braking / swerve / fall detection from telemetry; near-miss counting.
-- Feeds route costs and planner reports.
+- **Route risk (built).** Five factors per segment, length-weighted over the route: accident history (severity-weighted, last 3 years), road surface quality, traffic, lighting, cycling infrastructure. Score 0–100; bands low < 35 ≤ medium < 60 ≤ high. Weights in `modules/safety/risk.ts`.
+- **Routing (built).** Accident history and surface quality feed the segment `safety_score` that the `safest` profile minimises.
+- Kernel-density clustering of historical incidents → risk zones. *(not built)*
+- Hard-braking / swerve / fall detection from telemetry; near-miss counting. *(not built)*
 
 **Tables**
-`incidents`, `safety_events`, `risk_zones`, `segment_safety_scores`
+`incidents`; `road_segments.surface_quality` (migration 30). Not built: `safety_events`, `risk_zones`, `segment_safety_scores`.
 
 **API**
 ```
-GET    /api/v1/safety/risk-zones?bbox=
-GET    /api/v1/safety/segments/:id/score
-POST   /api/v1/safety/incidents          # operator/device
-GET    /api/v1/safety/report?zoneId=&from=&to=
+POST   /api/v1/routes/plan | /compare    # each route now carries `risk: RouteRiskDto`
 ```
 
-**Screens.** Risk map, Incident log, Safety report.
+**Screens.** Plan: a risk band on each route and a factor breakdown on the selected one.
 
 ---
 
@@ -447,28 +447,40 @@ WS     notification:new
 
 ## M14 — Payment & Billing
 
-> **Not built.** Skipped in Sprint 5, and the one module where not building it is also the safe choice: no card data touches this system by design, so a half-built billing path is a liability rather than a demo.
+> **Built: pay-as-you-go rentals.** Tariffs, fare quotes, rentals, mock payments and receipts are built; see ADR 0004. Subscriptions, wallets and invoices are not.
 
-**Purpose.** Ride charges, subscriptions, invoices. *Simulated by default.*
+**Purpose.** Ride charges and receipts. *Simulated by default.*
 
 **Responsibilities**
-- Pricing plans: unlock fee + per-minute rate, or pass/subscription; per operator, per vehicle type.
-- Fare computed at trip end; wallet ledger with double-entry style entries (`debit`/`credit`) so balances always reconcile.
-- Payment provider behind an adapter interface. Ship a `MockGateway`; a real gateway is a config swap. **Never store card data.**
+- Tariff per vehicle type: unlock fee + per-minute rate, with a minimum fare. Reference data in migration 29.
+- Fare quoted before unlocking (`/estimate`, and in the scan preview); computed at trip end in integer paise, minutes rounded up.
+- Rental lifecycle on the `trips` row: unlock by QR code → GPS fixes → verified return at a station → payment.
+- Payment provider behind the `PaymentGateway` adapter; only `MockGateway` ships (`PAYMENT_GATEWAY=mock`). A failed payment never blocks ending a ride; it can be retried. **Never store card data.**
+- Vehicle recommendation for a trip: ranks type × station on travel time, fare, battery margin, walk and availability, after filtering out vehicles that cannot cover the trip with a 20% margin. Suggests an alternative station when the nearest has nothing suitable.
+- Rider's history, receipts and eco summary (CO2 saved vs. car, energy, distance, spend).
 
 **Tables**
-`pricing_plans`, `subscriptions`, `fares`, `wallet_accounts`, `wallet_transactions`, `invoices`, `payment_intents`
+`pricing_plans`, `payments`, `trip_points`; rental columns on `trips` (migration 29). Not built: `subscriptions`, `wallet_accounts`, `wallet_transactions`, `invoices`.
 
 **API**
 ```
-GET    /api/v1/billing/plans
-POST   /api/v1/billing/subscribe
-GET    /api/v1/billing/wallet
-POST   /api/v1/billing/topup
-GET    /api/v1/billing/invoices
+GET    /api/v1/rentals/plans
+GET    /api/v1/rentals/estimate?vehicleType=&distanceM=&durationS=
+POST   /api/v1/rentals/recommend            # {origin, destination}
+GET    /api/v1/rentals/preview?code=        # after scanning, before unlocking
+POST   /api/v1/rentals                      # {unlockCode} → starts the ride
+GET    /api/v1/rentals/active
+POST   /api/v1/rentals/:id/track            # {position, speedKph?, accuracyM?, source: gps|simulated}
+POST   /api/v1/rentals/:id/end              # {position?} → 422 RETURN_NOT_AT_STATION | 409 STATION_FULL
+POST   /api/v1/rentals/:id/pay              # retry a failed payment
+GET    /api/v1/rentals                      # the rider's history
+GET    /api/v1/rentals/:id
+GET    /api/v1/rentals/:id/receipt
+GET    /api/v1/rentals/eco-summary
+GET    /api/v1/geo/search?q=                # choose places by name
 ```
 
-**Screens.** Wallet, Plans, Ride receipts, Operator revenue view.
+**Screens.** Ride (find, recommend, scan, ride, return), Trips (history, receipts, eco summary), Fleet (printable QR sticker per vehicle).
 
 ---
 

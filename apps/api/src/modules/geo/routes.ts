@@ -6,6 +6,9 @@ import { parsePoint, parsePolygon, selectGeom } from '../../db/spatial.ts';
 import { ok } from '../../lib/envelope.ts';
 import { requireAuth } from '../../middleware/auth.ts';
 import { asyncHandler } from '../../middleware/error.ts';
+import { query, validate } from '../../middleware/validate.ts';
+import { z } from 'zod';
+import { searchPlaces } from './search.ts';
 
 export const geoRoutes = Router();
 
@@ -48,5 +51,21 @@ geoRoutes.get(
     });
 
     res.json(ok(zones));
+  }),
+);
+
+/** Find a place by name — localities, streets, stations and the rider's saved places. */
+geoRoutes.get(
+  '/search',
+  requireAuth,
+  validate({
+    query: z.object({
+      q: z.string().trim().min(2).max(80),
+      limit: z.coerce.number().int().min(1).max(30).default(12),
+    }),
+  }),
+  asyncHandler(async (req, res) => {
+    const { q, limit } = query<{ q: string; limit: number }>(req);
+    res.json(ok(await searchPlaces(req.user!.id, q, limit)));
   }),
 );

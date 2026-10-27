@@ -53,6 +53,12 @@ export const ERROR_CODES = [
   'PLAN_NOT_FOUND',
   'TASK_NOT_FOUND',
   'STATION_NOT_FOUND',
+  'RENTAL_NOT_FOUND',
+  'VEHICLE_NOT_RENTABLE',
+  'RENTAL_ALREADY_ACTIVE',
+  'RETURN_NOT_AT_STATION',
+  'STATION_FULL',
+  'PAYMENT_FAILED',
   'SERVICE_UNAVAILABLE',
   'RATE_LIMITED',
   'INTERNAL_ERROR',
@@ -153,6 +159,11 @@ export interface VehicleDto {
   homeZoneId: string | null;
   homeZoneName: string | null;
   externalRef: string;
+  /** The code printed on the vehicle as a QR sticker. */
+  unlockCode: string | null;
+  /** The rental station it is docked at, if any. */
+  stationId: string | null;
+  stationName: string | null;
   type: VehicleType;
   status: VehicleStatus;
   batteryPct: number | null;
@@ -327,8 +338,10 @@ export interface RouteDto {
   etaMinutes: number;
   elevationGainM: number;
   energyWh: number;
-  /** 0-100, higher is riskier. */
+  /** 0-100, higher is riskier. Equal to `risk.score` once the API has scored the route. */
   riskScore: number;
+  /** M09: risk from accidents, road quality, traffic, lighting and cycling infrastructure. */
+  risk?: RouteRiskDto;
   meanCongestion: number;
   steps: RouteStepDto[];
   nodeCount: number;
@@ -422,7 +435,8 @@ export interface SimulationTimelinePointDto {
   safetyIncidents: number;
 }
 
-export type CompareDirection = 'better' | 'worse' | 'same';
+/** `neutral`: the metric changed, but up is not better or worse in itself. */
+export type CompareDirection = 'better' | 'worse' | 'same' | 'neutral';
 
 export interface CompareRowDto {
   metric: string;
@@ -458,4 +472,213 @@ export interface RunCompletedEvent {
   status: 'completed' | 'failed';
   durationMs: number | null;
   error: string | null;
+}
+
+// ---- M08 rental stations ---------------------------------------------------
+
+/** What a vehicle's battery can do, from its type's spec and its charge. */
+export interface BatteryDto {
+  /** Null for a pedal bike: there is no battery. */
+  pct: number | null;
+  capacityWh: number | null;
+  /** Metres of riding left at this charge; null when there is no battery. */
+  rangeM: number | null;
+}
+
+export interface StationVehicleDto {
+  id: string;
+  externalRef: string;
+  unlockCode: string;
+  type: VehicleType;
+  status: VehicleStatus;
+  battery: BatteryDto;
+  /** Rentable right now: available, and charged enough to be worth riding. */
+  rentable: boolean;
+}
+
+/** Counts for one vehicle type at one station. */
+export interface StationInventoryDto {
+  type: VehicleType;
+  /** Available and charged enough to rent. */
+  rentable: number;
+  /** Docked but charging, in maintenance, reserved or too flat. */
+  unavailable: number;
+}
+
+export interface RentalStationDto {
+  id: string;
+  code: string;
+  name: string;
+  zoneName: string | null;
+  location: LngLat;
+  capacity: number;
+  /** Docks still free for a return. */
+  freeDocks: number;
+  status: 'active' | 'closed';
+  inventory: StationInventoryDto[];
+  rentableTotal: number;
+  distanceM?: number;
+}
+
+export interface RentalStationDetailDto extends RentalStationDto {
+  vehicles: StationVehicleDto[];
+}
+
+// ---- M14 pricing and rentals -----------------------------------------------
+
+export interface PricingPlanDto {
+  id: string;
+  vehicleType: VehicleType;
+  name: string;
+  currency: string;
+  /** All money in the API is integer minor units (paise). */
+  unlockFeeMinor: number;
+  perMinuteMinor: number;
+  minimumFareMinor: number;
+}
+
+export interface FareBreakdownDto {
+  currency: string;
+  unlockFeeMinor: number;
+  timeFeeMinor: number;
+  minutes: number;
+  /** Added when the ride came in under the plan's minimum. */
+  minimumTopUpMinor: number;
+  totalMinor: number;
+}
+
+/** What scanning a QR code tells the rider before they commit. */
+export interface UnlockPreviewDto {
+  vehicle: StationVehicleDto;
+  stationName: string | null;
+  plan: PricingPlanDto;
+  /** Why it cannot be rented, when it cannot. */
+  notRentableReason: string | null;
+}
+
+export interface FareEstimateDto {
+  vehicleType: VehicleType;
+  plan: PricingPlanDto;
+  distanceM: number;
+  durationS: number;
+  fare: FareBreakdownDto;
+}
+
+/** One way to make the trip: a vehicle type, from a station, and why. */
+export interface VehicleRecommendationDto {
+  rank: number;
+  vehicleType: VehicleType;
+  station: RentalStationDto;
+  /** The best vehicle of this type at that station — highest charge. */
+  vehicle: StationVehicleDto;
+  walkM: number;
+  rideDurationS: number;
+  fare: FareBreakdownDto;
+  /** Range left after the trip, as a share of the battery's range. Null for a pedal bike. */
+  batteryMarginPct: number | null;
+  /** 0–1, lower is better. */
+  score: number;
+  /** True when this comes from a station other than the nearest one. */
+  alternative: boolean;
+  reasons: string[];
+}
+
+export interface RecommendationResponseDto {
+  tripDistanceM: number;
+  /** Where the trip distance came from — the router, or a straight-line estimate when it was down. */
+  distanceSource: 'route' | 'estimate';
+  nearestStation: RentalStationDto | null;
+  /** Why the nearest station is not the top pick, when it isn't. */
+  nearestStationNote: string | null;
+  recommendations: VehicleRecommendationDto[];
+}
+
+export type RentalStatus = 'active' | 'completed' | 'cancelled';
+
+export interface RentalDto {
+  id: string;
+  publicRef: string;
+  status: RentalStatus;
+  vehicle: { id: string; externalRef: string; unlockCode: string; type: VehicleType; battery: BatteryDto };
+  startStation: { id: string; name: string } | null;
+  endStation: { id: string; name: string } | null;
+  startedAt: string;
+  endedAt: string | null;
+  startPosition: LngLat | null;
+  endPosition: LngLat | null;
+  distanceM: number;
+  durationS: number;
+  plan: PricingPlanDto | null;
+  /** Running fare while active; the charged fare once completed. */
+  fare: FareBreakdownDto | null;
+  energyWh: number | null;
+  co2SavedG: number | null;
+  /** The GPS trace, oldest first. Only ever returned to the rider who took the trip. */
+  path: LngLat[];
+  payment: PaymentDto | null;
+}
+
+export interface PaymentDto {
+  id: string;
+  amountMinor: number;
+  currency: string;
+  provider: string;
+  providerRef: string | null;
+  status: 'pending' | 'succeeded' | 'failed';
+  createdAt: string;
+}
+
+export interface ReceiptDto {
+  receiptNo: string;
+  issuedAt: string;
+  rider: { name: string; email: string };
+  operatorName: string;
+  rental: RentalDto;
+}
+
+export interface EcoSummaryDto {
+  trips: number;
+  distanceKm: number;
+  rideMinutes: number;
+  spentMinor: number;
+  currency: string;
+  energyKwh: number;
+  co2SavedKg: number;
+  byType: Array<{ type: VehicleType; trips: number; distanceKm: number; co2SavedKg: number }>;
+  /** The assumption the CO2 figure rests on — stated, not implied. */
+  counterfactual: string;
+}
+
+// ---- M09 route risk --------------------------------------------------------
+
+export type RiskLevel = 'low' | 'medium' | 'high';
+
+export interface RouteRiskDto {
+  /** 0–100, higher is riskier. */
+  score: number;
+  level: RiskLevel;
+  /** Each 0–100, higher is riskier, length-weighted over the route. */
+  factors: {
+    accidents: number;
+    roadQuality: number;
+    traffic: number;
+    lighting: number;
+    infrastructure: number;
+  };
+  incidentCount: number;
+  /** Share of the route's length with no surface survey. */
+  unsurveyedPct: number;
+}
+
+// ---- place search ----------------------------------------------------------
+
+export type PlaceKind = 'zone' | 'street' | 'rental_station' | 'charging_station' | 'saved';
+
+export interface PlaceDto {
+  id: string;
+  kind: PlaceKind;
+  name: string;
+  /** Zone or other context, for telling two "Main Road"s apart. */
+  context: string | null;
+  location: LngLat;
 }

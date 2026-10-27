@@ -14,25 +14,24 @@ Dept. of CSE, AITM, Belagavi.
 
 ## What is built so far
 
-**Sprint 1** — foundation, authentication, vehicle registry.
-**Sprint 2** — traffic monitoring, weather, live map, basic KPIs.
-
-| Included | Not yet |
+| Built | Not yet |
 |---|---|
-| npm-workspaces monorepo (`apps/web`, `apps/api`, `packages/shared-types`) | Route planning, A\* (Sprint 3) |
-| 20-table MySQL schema with umzug migrations | ML service, demand model (Sprint 3) |
-| Idempotent synthetic Belagavi seed | Simulation engine (Sprint 4) |
-| M01 User & Access Management | Fleet optimization, parking, safety (Sprint 5) |
-| M03 Vehicle Management + status state machine | Payments, GBFS, emergency response (Sprint 6) |
-| M02 Traffic Monitoring + synthetic generator | |
-| M12 Weather Monitoring | |
-| M11 basic KPIs | |
-| Socket.IO gateway with room authorization | |
-| Cache / job-runner / event-bus adapter shells | |
-| Sign-in, **Live map** and Fleet screens | |
+| M01 users, roles, sign-up, saved places | M08 geofenced parking and no-park zones |
+| M02 traffic monitoring, live map, synthetic generator | M09 risk zones and telemetry safety events |
+| M03 vehicle registry, status state machine, maintenance | M13 notifications |
+| M04 route planning (A\* over real Belagavi streets), place search | M14 subscriptions, wallets, invoices |
+| M05 LightGBM demand model and model registry | M16 emergency response |
+| M06 simulation engine, scenarios, comparison (incl. energy) | |
+| M07 fleet rebalancing (min-cost LP), charging stations | |
+| **M08 rental stations** with live inventory and verified returns | |
+| **M09 route risk**: accidents, road quality, traffic, lighting, cycling infrastructure → low / medium / high | |
+| M10 / M11 environmental accounting, analytics rollups, CSV export | |
+| M12 weather · M15 GBFS feed | |
+| **M14 rentals**: QR unlock, GPS tracking, fare quotes, mock payments, receipts, eco summary | |
 
-The icon rail shows all six destinations; the four not yet built are disabled and say which
-sprint they arrive in.
+Screens: Live, Plan, **Ride**, **Trips**, Sim, Fleet, Data and Admin. Renting is covered in
+ADR 0004 and MODULES.md (M08, M09, M14). Payments use a mock gateway
+(`PAYMENT_GATEWAY=mock`) that approves every charge; no card data is ever handled.
 
 ---
 

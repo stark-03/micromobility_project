@@ -24,6 +24,15 @@ const PlanScreen = lazy(() =>
   import('../modules/plan/index.ts').then((m) => ({ default: m.PlanScreen })),
 );
 
+/** Lazy: the camera scanner and QR generator only matter to riders. */
+const RideScreen = lazy(() =>
+  import('../modules/ride/index.ts').then((m) => ({ default: m.RideScreen })),
+);
+
+const TripsScreen = lazy(() =>
+  import('../modules/trips/index.ts').then((m) => ({ default: m.TripsScreen })),
+);
+
 const AdminScreen = lazy(() =>
   import('../modules/admin/index.ts').then((m) => ({ default: m.AdminScreen })),
 );
@@ -46,7 +55,7 @@ function NotFound() {
       </Typography>
       <Typography variant="h3">That screen does not exist</Typography>
       <Typography variant="body2" color="text.secondary">
-        Sign in, Live, Plan, Sim, Fleet, Data and Admin all exist. This path does not.
+        Sign in, Live, Plan, Ride, Trips, Sim, Fleet, Data and Admin all exist. This path does not.
       </Typography>
     </Box>
   );
@@ -74,6 +83,30 @@ export const router = createBrowserRouter([
         <AppShell>
           <Suspense fallback={<LoadingState />}>
             <PlanScreen />
+          </Suspense>
+        </AppShell>
+      </RequireAuth>
+    ),
+  },
+  {
+    path: '/ride',
+    element: (
+      <RequireAuth>
+        <AppShell>
+          <Suspense fallback={<LoadingState />}>
+            <RideScreen />
+          </Suspense>
+        </AppShell>
+      </RequireAuth>
+    ),
+  },
+  {
+    path: '/trips',
+    element: (
+      <RequireAuth>
+        <AppShell>
+          <Suspense fallback={<LoadingState />}>
+            <TripsScreen />
           </Suspense>
         </AppShell>
       </RequireAuth>

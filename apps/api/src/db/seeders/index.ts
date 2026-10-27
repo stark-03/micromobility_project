@@ -12,6 +12,8 @@ import { loadOsmSegments } from './osm.ts';
 import { assertConnected } from './graph.ts';
 
 import { seedChargingStations } from './charging.ts';
+import { seedRentalStations } from './rentals.ts';
+import { seedSafety } from './safety.ts';
 import { seedScenarios } from './scenarios.ts';
 
 export interface SeedSummary {
@@ -24,6 +26,8 @@ export interface SeedSummary {
   telemetry: number;
   scenarios: number;
   chargingStations: number;
+  rentalStations: number;
+  incidents: number;
 }
 
 export interface SeedOptions {
@@ -390,6 +394,10 @@ export async function runSeed(options: SeedOptions = {}): Promise<SeedSummary> {
     // the seeded zones.
     await seedScenarios(s, t);
     await seedChargingStations(s, t);
+    // After vehicles: docking moves seeded vehicles into station racks.
+    await seedRentalStations(s, t);
+    // After road segments: incidents and surveys hang off them.
+    await seedSafety(s, t);
   });
 
   const summary: SeedSummary = {
@@ -402,6 +410,8 @@ export async function runSeed(options: SeedOptions = {}): Promise<SeedSummary> {
     telemetry: await scalar(s, 'SELECT COUNT(*) AS n FROM vehicle_telemetry'),
     scenarios: await scalar(s, 'SELECT COUNT(*) AS n FROM scenarios'),
     chargingStations: await scalar(s, 'SELECT COUNT(*) AS n FROM charging_stations'),
+    rentalStations: await scalar(s, 'SELECT COUNT(*) AS n FROM rental_stations'),
+    incidents: await scalar(s, 'SELECT COUNT(*) AS n FROM incidents'),
   };
 
   if (!options.quiet && generatedPasswords.length > 0) {

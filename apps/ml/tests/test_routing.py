@@ -159,3 +159,53 @@ class TestPlanRoute:
         r = plan_route(edges, (74.50, 15.85), (74.51, 15.85), PROFILES["fastest"], "scooter")
         astar_nodes = ["A"] + [s["segmentId"] for s in r["steps"]]
         assert len(astar_nodes) - 1 == len(dijkstra) - 1
+
+
+class TestSnappingToTheRoutableNetwork:
+    """Rani Chennamma Circle, reduced to four edges.
+
+    In the OSM import some junctions can be left but never entered: a one-way
+    road leaves them and nothing arrives. Snapping a destination onto one made
+    every profile fail with "No route exists", even though a perfectly good
+    junction sat a few metres away.
+    """
+
+    def network(self):
+        return [
+            *diamond(),
+            # X → D only. X has nowhere to be reached from, and sits right on
+            # top of where the rider asked to go.
+            edge("5", "X", "D", [[74.5102, 15.8502], [74.51, 15.85]], length=30, oneWay=True),
+        ]
+
+    def test_a_destination_beside_an_unreachable_junction_still_routes(self):
+        # The point is nearer X than D — the old snap chose X and failed.
+        r = plan_route(
+            self.network(), (74.50, 15.85), (74.51021, 15.85021), PROFILES["fastest"], "scooter"
+        )
+        assert r["snappedDestination"] == [74.51, 15.85]
+        assert r["distanceM"] > 0
+
+    def test_snapping_reports_how_far_the_pin_moved(self):
+        r = plan_route(
+            self.network(), (74.50, 15.85), (74.51021, 15.85021), PROFILES["fastest"], "scooter"
+        )
+        # About 30 m to D, and the report says so rather than hiding it.
+        assert 20 < r["snapDistanceM"] < 40
+
+    def test_an_origin_on_an_unreachable_junction_is_moved_too(self):
+        # Starting at X would work (X → D exists), but X is outside the network
+        # every other junction belongs to, so a rider there could not reach,
+        # say, B. Snapping both ends into the same component is what makes any
+        # pair of snapped points routable.
+        r = plan_route(
+            self.network(), (74.5102, 15.8502), (74.505, 15.855), PROFILES["fastest"], "scooter"
+        )
+        assert r["distanceM"] > 0
+
+    def test_a_point_far_from_the_network_is_refused_not_moved(self):
+        # Snapping into the main network must not drag a pin across town.
+        with pytest.raises(NoRouteError, match="from any road"):
+            plan_route(
+                self.network(), (74.50, 15.85), (74.60, 15.95), PROFILES["fastest"], "scooter"
+            )

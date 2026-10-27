@@ -4,6 +4,8 @@ import { selectGeom } from '../../db/spatial.ts';
 import { env } from '../../config/env.ts';
 import { AppError } from '../../lib/errors.ts';
 import { parseLineString } from '../../db/spatial.ts';
+import { INCIDENT_LOOKBACK_YEARS, riskForSteps } from '../safety/service.ts';
+import type { RiskStep } from '../safety/service.ts';
 
 /**
  * M04 route planning.
@@ -57,7 +59,21 @@ const SAFETY_SQL = `
       END
     - (rs.speed_free_kph - 30) * 0.4
     - (rs.lanes - 1) * 4
+    -- M09: a broken surface throws riders; an unsurveyed one scores as average.
+    + (COALESCE(rs.surface_quality, 3) - 3) * 4
+    -- M09: accident history, severity-weighted per km, capped so one bad
+    -- junction cannot make a whole arterial unroutable.
+    - LEAST(30, COALESCE(inc.weighted, 0) / GREATEST(rs.length_m / 1000, 0.05) * 5)
   ))`;
+
+/** Severity-weighted recent incidents per segment, for SAFETY_SQL. */
+const INCIDENTS_SQL = `
+  SELECT segment_id,
+         SUM(CASE severity WHEN 'fatal' THEN 10 WHEN 'serious' THEN 3 ELSE 1 END) AS weighted
+    FROM incidents
+   WHERE segment_id IS NOT NULL
+     AND occurred_at >= DATE_SUB(NOW(3), INTERVAL ${INCIDENT_LOOKBACK_YEARS} YEAR)
+   GROUP BY segment_id`;
 
 export interface PlanEdge {
   segmentId: string;
@@ -83,7 +99,8 @@ export async function loadGraph(): Promise<PlanEdge[]> {
             ${SAFETY_SQL} AS safety_score,
             ${selectGeom('rs.geometry', 'wkt')}
      FROM road_segments rs
-     LEFT JOIN traffic_snapshots ts ON ts.segment_id = rs.id`,
+     LEFT JOIN traffic_snapshots ts ON ts.segment_id = rs.id
+     LEFT JOIN (${INCIDENTS_SQL}) inc ON inc.segment_id = rs.id`,
     { type: QueryTypes.SELECT },
   );
 
@@ -147,14 +164,38 @@ export interface PlanInput {
   profile: string;
 }
 
+interface ScorableRoute {
+  steps?: RiskStep[];
+  riskScore?: number;
+  [key: string]: unknown;
+}
+
+/**
+ * M09: replace the router's congestion-only risk with the full route risk.
+ *
+ * Done here rather than in the ML service because accident history and road
+ * surveys live in MySQL, and the ML service holds no database credentials.
+ * `riskScore` is overwritten too, so every existing reader of it — the Plan
+ * screen's "best" marker among them — now sees the same number as `risk.score`.
+ */
+async function withRisk<T extends ScorableRoute>(route: T): Promise<T> {
+  const risk = await riskForSteps(route.steps ?? []);
+  return { ...route, riskScore: risk.score, risk };
+}
+
 export async function planRoute(input: PlanInput): Promise<unknown> {
   const edges = await loadGraph();
-  return callMl('/internal/routing/plan', { ...input, edges });
+  const route = await callMl<ScorableRoute>('/internal/routing/plan', { ...input, edges });
+  return withRisk(route);
 }
 
 export async function compareRoutes(
   input: Omit<PlanInput, 'profile'>,
 ): Promise<{ routes: unknown[] }> {
   const edges = await loadGraph();
-  return callMl('/internal/routing/compare', { ...input, edges });
+  const result = await callMl<{ routes: ScorableRoute[] }>('/internal/routing/compare', {
+    ...input,
+    edges,
+  });
+  return { ...result, routes: await Promise.all(result.routes.map(withRisk)) };
 }

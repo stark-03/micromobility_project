@@ -35,6 +35,8 @@ export const env = Object.freeze({
   corsOrigin: optional('CORS_ORIGIN', 'http://localhost:5173'),
   mlServiceUrl: optional('ML_SERVICE_URL', ''),
   mlInternalSecret: optional('ML_INTERNAL_SECRET', 'dev_only_secret'),
+  /** M14 payment adapter. Only 'mock' exists until a real gateway is contracted. */
+  paymentGateway: optional('PAYMENT_GATEWAY', 'mock'),
 });
 
 /** The schema this process talks to. Tests get `micromobility_test`. */

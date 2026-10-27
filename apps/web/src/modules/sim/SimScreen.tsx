@@ -46,6 +46,8 @@ const METRIC_META: Record<string, { label: string; unit: string; digits: number 
   emptyRatioPct: { label: 'Empty ratio', unit: '%', digits: 1 },
   carKmReplaced: { label: 'Car km replaced', unit: 'km', digits: 0 },
   co2AvoidedKg: { label: 'CO₂ avoided', unit: 'kg', digits: 0 },
+  energyKwh: { label: 'Energy used', unit: 'kWh', digits: 1 },
+  whPerTrip: { label: 'Energy per trip', unit: 'Wh', digits: 1 },
   safetyIncidents: { label: 'Expected incidents', unit: '', digits: 2 },
   incidentsPer1000Km: { label: 'Incidents / 1000 km', unit: '', digits: 3 },
   rebalanceMoves: { label: 'Rebalance moves', unit: '', digits: 0 },

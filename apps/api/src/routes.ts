@@ -9,6 +9,8 @@ import { ingestRoutes } from './modules/ingest/routes.ts';
 import { userRoutes } from './modules/users/routes.ts';
 import { trafficIngestRoutes, trafficRoutes } from './modules/traffic/routes.ts';
 import { predictionRoutes } from './modules/predictions/routes.ts';
+import { rentalRoutes } from './modules/rentals/routes.ts';
+import { stationRoutes } from './modules/stations/routes.ts';
 import { routeRoutes } from './modules/routes/routes.ts';
 import { runRoutes, simulationRoutes } from './modules/simulation/routes.ts';
 import { maintenanceRoutes, vehicleRoutes } from './modules/vehicles/routes.ts';
@@ -38,3 +40,6 @@ apiV1.use('/runs', runRoutes);
 apiV1.use('/fleet', fleetRoutes);
 // Charging infrastructure + rider-facing proximity lookups.
 apiV1.use('/charging', chargingRoutes);
+// M08 rental stations and M14 rentals: renting, riding and paying.
+apiV1.use('/stations', stationRoutes);
+apiV1.use('/rentals', rentalRoutes);
