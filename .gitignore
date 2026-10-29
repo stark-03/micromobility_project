@@ -42,3 +42,4 @@ npm-debug.log*
 # with `npm run guide:pdf`.
 Viva-Run-of-Show.pdf
 User-Manual.pdf
+*.pdf
