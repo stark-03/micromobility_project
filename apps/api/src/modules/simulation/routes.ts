@@ -1,3 +1,4 @@
+import { ACCESS } from '@mm/shared-types';
 import { Router } from 'express';
 import { z } from 'zod';
 import { ok } from '../../lib/envelope.ts';
@@ -20,8 +21,9 @@ import {
 export const simulationRoutes = Router();
 export const runRoutes = Router();
 
-simulationRoutes.use(requireAuth);
-runRoutes.use(requireAuth);
+// Planning data. The routes below narrow who may change anything.
+simulationRoutes.use(requireAuth, requireRole(...ACCESS.simRead));
+runRoutes.use(requireAuth, requireRole(...ACCESS.simRead));
 
 const fleetSchema = z.object({
   scooter: z.number().int().min(0).max(5000),

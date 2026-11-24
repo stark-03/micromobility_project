@@ -4,6 +4,7 @@ import 'leaflet/dist/leaflet.css';
 import { Box, Typography } from '@mui/material';
 import type { SegmentTrafficDto, ZoneDto } from '@mm/shared-types';
 import { flowRamp, token } from '../../lib/tokens.ts';
+import { MapSourceFrame } from '../../components/MapSource.tsx';
 
 const BELAGAVI_CENTRE: [number, number] = [15.8497, 74.4977]; // Leaflet is [lat, lng]
 
@@ -93,9 +94,7 @@ export function StreetMap({ zones, segments, selectedId, onSelectSegment }: Stre
     for (const z of zones) {
       if (!z.boundary) continue;
       // GeoJSON is [lng, lat]; Leaflet wants [lat, lng].
-      const ring = z.boundary.coordinates[0]!.map(
-        ([lng, lat]) => [lat, lng] as [number, number],
-      );
+      const ring = z.boundary.coordinates[0]!.map(([lng, lat]) => [lat, lng] as [number, number]);
       L.polygon(ring, {
         color: token('--mist-400'),
         weight: 1,
@@ -152,15 +151,17 @@ export function StreetMap({ zones, segments, selectedId, onSelectSegment }: Stre
 
   return (
     <Box className="absolute inset-0">
-      <div ref={container} className="absolute inset-0" data-testid="street-map" />
-      {tilesFailed && (
-        <Box className="pointer-events-none absolute left-1/2 top-3 z-[500] -translate-x-1/2 rounded-md border border-ink-700 bg-ink-900 px-3 py-1.5">
-          <Typography variant="caption" color="text.secondary">
-            Street tiles unavailable — congestion overlay still live. Switch to the offline map if
-            this persists.
-          </Typography>
-        </Box>
-      )}
+      <MapSourceFrame map={map}>
+        <div ref={container} className="absolute inset-0" data-testid="street-map" />
+        {tilesFailed && (
+          <Box className="pointer-events-none absolute left-1/2 top-3 z-[500] -translate-x-1/2 rounded-md border border-ink-700 bg-ink-900 px-3 py-1.5">
+            <Typography variant="caption" color="text.secondary">
+              Street tiles unavailable — congestion overlay still live. Switch to the offline map if
+              this persists.
+            </Typography>
+          </Box>
+        )}
+      </MapSourceFrame>
     </Box>
   );
 }

@@ -16,7 +16,8 @@ import {
 } from '@mui/icons-material';
 import type { WeatherDto } from '@mm/shared-types';
 import { api } from '../lib/api.ts';
-import { useRealtime } from '../lib/use-realtime.ts';
+import { canOpen } from '../lib/access.ts';
+import { disconnectRealtime, useRealtime } from '../lib/use-realtime.ts';
 import { useAuthStore } from '../lib/auth-store.ts';
 
 interface Destination {
@@ -87,6 +88,9 @@ function TopBar() {
     try {
       await api.post('/auth/logout');
     } finally {
+      // Before the next person signs in on this tab: the socket's rooms were
+      // joined for this user, and must not carry over to the next one.
+      disconnectRealtime();
       clear();
       navigate('/signin', { replace: true });
     }
@@ -128,6 +132,9 @@ function TopBar() {
 
 function IconRail() {
   const navigate = useNavigate();
+  const roles = useAuthStore((s) => s.user?.roles);
+  // A destination this role cannot open is left out, not shown disabled.
+  const destinations = DESTINATIONS.filter((d) => !d.path || canOpen(roles, d.path));
 
   return (
     <Box
@@ -135,7 +142,7 @@ function IconRail() {
       aria-label="Primary"
       className="fixed bottom-0 left-0 top-topbar z-10 flex w-rail flex-col items-center gap-1 border-r border-ink-700 bg-ink-900 py-3"
     >
-      {DESTINATIONS.map((d) => {
+      {destinations.map((d) => {
         const enabled = Boolean(d.path);
         const item = (
           <Box

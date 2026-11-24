@@ -1,3 +1,4 @@
+import { ACCESS } from '@mm/shared-types';
 import { Router } from 'express';
 import { z } from 'zod';
 import { ok } from '../../lib/envelope.ts';
@@ -16,7 +17,8 @@ import type { TaskStatus } from './service.ts';
 
 export const fleetRoutes = Router();
 
-fleetRoutes.use(requireAuth);
+// Fleet staff read; the routes below narrow who may change anything.
+fleetRoutes.use(requireAuth, requireRole(...ACCESS.fleetRead));
 
 const planSchema = z.object({
   horizonHours: z.number().min(0.5).max(24).default(2),

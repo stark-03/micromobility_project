@@ -1,5 +1,6 @@
 import { QueryTypes, UniqueConstraintError } from 'sequelize';
-import type { VehicleDto, VehicleStatus } from '@mm/shared-types';
+import { hasAccess, VEHICLE_STATUSES } from '@mm/shared-types';
+import type { FleetSummaryDto, VehicleDto, VehicleStatus } from '@mm/shared-types';
 import { sequelize } from '../../db/index.ts';
 import {
   MaintenanceTicket,
@@ -39,19 +40,27 @@ export interface Caller {
   operatorId: string | null;
 }
 
+/** No operator has this id, so a filter on it matches nothing. */
+const NO_OPERATOR = '0';
+
 function operatorScope(caller: Caller): string | null {
   const isOperatorOnly =
     caller.roles.includes('operator') &&
     !caller.roles.includes('admin') &&
     !caller.roles.includes('planner') &&
     !caller.roles.includes('analyst');
-  return isOperatorOnly ? caller.operatorId : null;
+  if (!isOperatorOnly) return null;
+  // An operator not yet attached to a company sees no vehicles. Treating the
+  // missing id as "no filter" handed them every operator's fleet.
+  return caller.operatorId ?? NO_OPERATOR;
 }
 
 const VEHICLE_SELECT = `
   SELECT v.id, v.operator_id, o.name AS operator_name,
          v.home_zone_id, z.name AS home_zone_name,
          v.external_ref, v.unlock_code, v.station_id, rs.name AS station_name,
+         ar.started_at AS rental_started_at, ar.distance_m AS rental_distance_m,
+         rider.full_name AS rider_name,
          v.type, v.status, v.battery_pct, v.last_seen_at,
          ${selectGeom('v.last_position', 'last_wkt')},
          v.created_at, v.updated_at
@@ -59,7 +68,51 @@ const VEHICLE_SELECT = `
   LEFT JOIN operators o ON o.id = v.operator_id
   LEFT JOIN zones z     ON z.id = v.home_zone_id
   LEFT JOIN rental_stations rs ON rs.id = v.station_id
+  LEFT JOIN trips ar ON ar.active_vehicle_id = v.id
+  LEFT JOIN users rider ON rider.id = ar.user_id
 `;
+
+/**
+ * Remove what this caller's role may not see: who is riding, and the code that
+ * unlocks the vehicle. Row scoping decides which vehicles; this decides which
+ * fields.
+ */
+export function visibleTo(caller: Caller, vehicle: VehicleDto): VehicleDto {
+  const seesRider = hasAccess(caller.roles, 'riderIdentity');
+  const manages = hasAccess(caller.roles, 'fleetManage');
+  return {
+    ...vehicle,
+    unlockCode: manages ? vehicle.unlockCode : null,
+    activeRental: vehicle.activeRental && {
+      ...vehicle.activeRental,
+      riderName: seesRider ? vehicle.activeRental.riderName : null,
+    },
+  };
+}
+
+/** Counts across the caller's whole fleet, for the live strip on the Fleet screen. */
+export async function fleetSummary(caller: Caller): Promise<FleetSummaryDto> {
+  const scoped = operatorScope(caller);
+  const clause = scoped ? 'AND v.operator_id = :operator' : '';
+  const rows = await sequelize.query<{ status: VehicleStatus; n: string; rented: string }>(
+    `SELECT v.status, COUNT(*) AS n, COUNT(ar.id) AS rented
+       FROM vehicles v
+       LEFT JOIN trips ar ON ar.active_vehicle_id = v.id
+      WHERE v.deleted_at IS NULL ${clause}
+      GROUP BY v.status`,
+    { replacements: { operator: scoped }, type: QueryTypes.SELECT },
+  );
+
+  const byStatus = Object.fromEntries(
+    VEHICLE_STATUSES.map((s) => [s, Number(rows.find((r) => r.status === s)?.n ?? 0)]),
+  ) as Record<VehicleStatus, number>;
+
+  return {
+    total: rows.reduce((n, r) => n + Number(r.n), 0),
+    byStatus,
+    activeRentals: rows.reduce((n, r) => n + Number(r.rented), 0),
+  };
+}
 
 export interface VehiclePage {
   vehicles: VehicleDto[];
@@ -103,11 +156,16 @@ export async function listVehicles(
   );
 
   const rows = await sequelize.query<VehicleRow>(
-    `${VEHICLE_SELECT} WHERE ${clause} ORDER BY v.id ASC LIMIT ? OFFSET ?`,
+    // Vehicles on a rental first: that is what someone watching the fleet is
+    // looking for, and it must not be buried on a later page.
+    `${VEHICLE_SELECT} WHERE ${clause} ORDER BY ar.id IS NULL, v.id ASC LIMIT ? OFFSET ?`,
     { type: QueryTypes.SELECT, replacements: [...reps, q.limit, (q.page - 1) * q.limit] },
   );
 
-  return { vehicles: rows.map(toVehicleDto), total: Number(countRow?.n ?? 0) };
+  return {
+    vehicles: rows.map((r) => visibleTo(caller, toVehicleDto(r))),
+    total: Number(countRow?.n ?? 0),
+  };
 }
 
 export async function getVehicleRow(caller: Caller, id: string): Promise<VehicleRow> {
@@ -235,12 +293,14 @@ export async function changeStatus(
 ): Promise<StatusChange> {
   await getVehicleRow(caller, id);
 
+  let operatorId = '';
   const from = await sequelize.transaction(async (t) => {
     // FOR UPDATE so two concurrent transitions cannot both read the same
     // starting status and both write a history row.
     const vehicle = await Vehicle.findByPk(id, { lock: t.LOCK.UPDATE, transaction: t });
     if (!vehicle) throw AppError.notFound('VEHICLE_NOT_FOUND', 'Vehicle not found');
 
+    operatorId = String(vehicle.operator_id);
     const current = vehicle.status;
     // Throws INVALID_STATE_TRANSITION, which rolls the transaction back — so an
     // illegal request writes NO history row.
@@ -265,6 +325,7 @@ export async function changeStatus(
 
   bus.emit('vehicle:status', {
     vehicleId: String(id),
+    operatorId,
     from,
     to: input.to,
     at: new Date().toISOString(),

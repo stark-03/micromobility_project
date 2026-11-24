@@ -72,6 +72,55 @@ export type ErrorCode = (typeof ERROR_CODES)[number];
 export const ROLES = ['admin', 'planner', 'operator', 'commuter', 'analyst', 'device'] as const;
 export type Role = (typeof ROLES)[number];
 
+/**
+ * Who may do what. One table, read by the API (which enforces it) and the web
+ * app (which hides what a role cannot use), so the two cannot disagree.
+ *
+ * The API is the gate; hiding a button in the UI is only a courtesy.
+ */
+export const ACCESS = {
+  /** Screens every human role can open. */
+  live: ['admin', 'planner', 'operator', 'analyst', 'commuter'],
+  plan: ['admin', 'planner', 'operator', 'analyst', 'commuter'],
+  /** Renting. Admin is included so a demo can be run from one account. */
+  ride: ['commuter', 'admin'],
+  fleetRead: ['admin', 'operator', 'planner', 'analyst'],
+  fleetManage: ['admin', 'operator'],
+  rebalance: ['admin', 'operator', 'planner'],
+  simRead: ['admin', 'planner', 'analyst'],
+  simWrite: ['admin', 'planner'],
+  dataRead: ['admin', 'planner', 'analyst'],
+  modelTrain: ['admin', 'analyst'],
+  /** The Admin screen: city analytics. */
+  analytics: ['admin', 'planner', 'analyst'],
+  chargingManage: ['admin', 'planner'],
+  /** Who may see which person is on a vehicle. A planner needs the count, not the name. */
+  riderIdentity: ['admin', 'operator'],
+} as const satisfies Record<string, readonly Role[]>;
+
+export type AccessRule = keyof typeof ACCESS;
+
+/**
+ * Each role's own dashboard: where it lands after signing in. In priority
+ * order, so someone holding several roles gets the most senior one's.
+ */
+export const DASHBOARDS: ReadonlyArray<{ role: Role; path: string; label: string }> = [
+  { role: 'admin', path: '/admin', label: 'Admin dashboard' },
+  { role: 'operator', path: '/fleet', label: 'Fleet operations' },
+  { role: 'planner', path: '/sim', label: 'Scenario planning' },
+  { role: 'analyst', path: '/data', label: 'Demand analytics' },
+  { role: 'commuter', path: '/ride', label: 'Rider home' },
+];
+
+export function dashboardFor(roles: readonly string[] | undefined): { path: string; label: string } {
+  const d = DASHBOARDS.find((x) => roles?.includes(x.role));
+  return d ? { path: d.path, label: d.label } : { path: '/live', label: 'Live map' };
+}
+
+export function hasAccess(roles: readonly string[] | undefined, rule: AccessRule): boolean {
+  return (ACCESS[rule] as readonly string[]).some((r) => roles?.includes(r));
+}
+
 export const VEHICLE_TYPES = ['scooter', 'bike', 'ebike', 'ev'] as const;
 export type VehicleType = (typeof VEHICLE_TYPES)[number];
 
@@ -164,6 +213,8 @@ export interface VehicleDto {
   /** The rental station it is docked at, if any. */
   stationId: string | null;
   stationName: string | null;
+  /** The ride in progress on this vehicle, if a rider has it right now. */
+  activeRental: VehicleActiveRentalDto | null;
   type: VehicleType;
   status: VehicleStatus;
   batteryPct: number | null;
@@ -171,6 +222,21 @@ export interface VehicleDto {
   lastPosition: GeoPoint | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface VehicleActiveRentalDto {
+  /** Null unless the caller may see who is riding (ACCESS.riderIdentity). */
+  riderName: string | null;
+  startedAt: string;
+  distanceM: number;
+}
+
+/** The whole fleet at a glance, independent of the list's filters and page. */
+export interface FleetSummaryDto {
+  total: number;
+  byStatus: Record<VehicleStatus, number>;
+  /** Vehicles a rider is on now, per the rentals themselves. */
+  activeRentals: number;
 }
 
 export interface VehicleStatusHistoryDto {

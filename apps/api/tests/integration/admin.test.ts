@@ -95,11 +95,11 @@ describe('PATCH /admin/users/:id/roles', () => {
     await request(app)
       .patch(`/api/v1/admin/users/${user.id}/roles`)
       .set(...admin.auth)
-      .send({ roles: ['operator'] });
+      .send({ roles: ['planner'] });
 
     const entry = await AuditLog.findOne({ where: { action: 'admin.user.roles_changed' } });
     expect(entry).not.toBeNull();
-    expect(entry!.metadata).toEqual({ before: ['commuter'], after: ['operator'] });
+    expect(entry!.metadata).toEqual({ before: ['commuter'], after: ['planner'], operatorId: null });
   });
 
   it('refuses to remove the last admin', async () => {

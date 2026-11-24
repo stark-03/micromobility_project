@@ -1,3 +1,4 @@
+import { ACCESS } from '@mm/shared-types';
 import { Router } from 'express';
 import { z } from 'zod';
 import { ok } from '../../lib/envelope.ts';
@@ -10,14 +11,14 @@ import { forecastDemand, listModels } from './service.ts';
 
 export const predictionRoutes = Router();
 
-predictionRoutes.use(requireAuth);
+predictionRoutes.use(requireAuth, requireRole(...ACCESS.dataRead));
 
 const demandQuery = z.object({
   zoneId: z.string().regex(/^\d+$/).optional(),
   horizon: z.coerce.number().int().min(1).max(24).default(4),
 });
 
-/** Public passthrough (MODULES.md M05). */
+/** Forecasts for the Data screen (MODULES.md M05). */
 predictionRoutes.get(
   '/demand',
   validate({ query: demandQuery }),
@@ -44,7 +45,7 @@ predictionRoutes.get(
  */
 predictionRoutes.post(
   '/train',
-  requireRole('admin', 'analyst'),
+  requireRole(...ACCESS.modelTrain),
   asyncHandler(async (_req, res) => {
     const jobId = await enqueue('train-demand', {});
     res.status(202).json(ok({ jobId, status: 'queued' }));

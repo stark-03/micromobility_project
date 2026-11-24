@@ -11,7 +11,7 @@ describe('event bus', () => {
     bus.on('vehicle:status', handler);
 
     const payload = {
-      vehicleId: '1',
+      vehicleId: '1', operatorId: '1',
       from: 'available',
       to: 'in_use',
       at: '2026-08-05T10:00:00.000Z',
@@ -37,7 +37,7 @@ describe('event bus', () => {
     const handler = vi.fn();
     bus.on('vehicle:created', handler);
     bus.emit('vehicle:status', {
-      vehicleId: '1',
+      vehicleId: '1', operatorId: '1',
       from: 'available',
       to: 'in_use',
       at: 'now',
@@ -58,7 +58,7 @@ describe('event bus', () => {
     // exists. That must be harmless.
     expect(bus.listenerCount('vehicle:status')).toBe(0);
     expect(() =>
-      bus.emit('vehicle:status', { vehicleId: '1', from: 'available', to: 'in_use', at: 'now' }),
+      bus.emit('vehicle:status', { vehicleId: '1', operatorId: '1', from: 'available', to: 'in_use', at: 'now' }),
     ).not.toThrow();
   });
 });

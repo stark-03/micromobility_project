@@ -1,10 +1,11 @@
 import { lazy, Suspense } from 'react';
-import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { createBrowserRouter } from 'react-router-dom';
 import { Box, Typography } from '@mui/material';
 import { AppShell } from '../components/AppShell.tsx';
 import { LoadingState } from '../components/StateViews.tsx';
 import { SignInScreen, SignUpScreen } from '../modules/auth/index.ts';
-import { RequireAuth } from './guard.tsx';
+import { ACCESS } from '../lib/access.ts';
+import { HomeRedirect, RequireAuth } from './guard.tsx';
 
 /**
  * Fleet is lazy so MUI's DataGrid lands in its own chunk rather than in the
@@ -67,7 +68,7 @@ export const router = createBrowserRouter([
   {
     path: '/live',
     element: (
-      <RequireAuth>
+      <RequireAuth roles={ACCESS.live}>
         <AppShell>
           <Suspense fallback={<LoadingState />}>
             <LiveScreen />
@@ -79,7 +80,7 @@ export const router = createBrowserRouter([
   {
     path: '/plan',
     element: (
-      <RequireAuth>
+      <RequireAuth roles={ACCESS.plan}>
         <AppShell>
           <Suspense fallback={<LoadingState />}>
             <PlanScreen />
@@ -91,7 +92,7 @@ export const router = createBrowserRouter([
   {
     path: '/ride',
     element: (
-      <RequireAuth>
+      <RequireAuth roles={ACCESS.ride}>
         <AppShell>
           <Suspense fallback={<LoadingState />}>
             <RideScreen />
@@ -103,7 +104,7 @@ export const router = createBrowserRouter([
   {
     path: '/trips',
     element: (
-      <RequireAuth>
+      <RequireAuth roles={ACCESS.ride}>
         <AppShell>
           <Suspense fallback={<LoadingState />}>
             <TripsScreen />
@@ -115,7 +116,7 @@ export const router = createBrowserRouter([
   {
     path: '/sim',
     element: (
-      <RequireAuth>
+      <RequireAuth roles={ACCESS.simRead}>
         <AppShell>
           <Suspense fallback={<LoadingState />}>
             <SimScreen />
@@ -127,7 +128,7 @@ export const router = createBrowserRouter([
   {
     path: '/admin',
     element: (
-      <RequireAuth>
+      <RequireAuth roles={ACCESS.analytics}>
         <AppShell>
           <Suspense fallback={<LoadingState />}>
             <AdminScreen />
@@ -139,7 +140,7 @@ export const router = createBrowserRouter([
   {
     path: '/data',
     element: (
-      <RequireAuth>
+      <RequireAuth roles={ACCESS.dataRead}>
         <AppShell>
           <Suspense fallback={<LoadingState />}>
             <DataScreen />
@@ -151,7 +152,7 @@ export const router = createBrowserRouter([
   {
     path: '/fleet',
     element: (
-      <RequireAuth>
+      <RequireAuth roles={ACCESS.fleetRead}>
         <AppShell>
           <Suspense fallback={<LoadingState />}>
             <FleetScreen />
@@ -160,6 +161,13 @@ export const router = createBrowserRouter([
       </RequireAuth>
     ),
   },
-  { path: '/', element: <Navigate to="/live" replace /> },
+  {
+    path: '/',
+    element: (
+      <RequireAuth>
+        <HomeRedirect />
+      </RequireAuth>
+    ),
+  },
   { path: '*', element: <NotFound /> },
 ]);

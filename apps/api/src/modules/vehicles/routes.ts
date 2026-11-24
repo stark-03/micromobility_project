@@ -1,12 +1,14 @@
 import { Router } from 'express';
 import { requireAuth } from '../../middleware/auth.ts';
 import { asyncHandler } from '../../middleware/error.ts';
+import { ACCESS } from '@mm/shared-types';
 import { requireRole } from '../../middleware/rbac.ts';
 import { validate } from '../../middleware/validate.ts';
 import {
   getVehicle,
   getVehicleHistory,
   getVehicleMaintenance,
+  getFleetSummary,
   getVehicles,
   getVehicleTelemetry,
   patchMaintenance,
@@ -32,22 +34,34 @@ export const maintenanceRoutes = Router();
 
 vehicleRoutes.use(requireAuth);
 
-// Reads: any authenticated role. Operator-role callers are narrowed to their
-// own fleet in the service layer, not here.
-vehicleRoutes.get('/', validate({ query: listVehiclesQuerySchema }), asyncHandler(getVehicles));
-vehicleRoutes.get('/:id', validate({ params: idParamSchema }), asyncHandler(getVehicle));
+// Reads: fleet staff. A rider finds vehicles through /stations and
+// /charging/vehicles/near, which show only what can be rented. Operator-role
+// callers are narrowed to their own fleet in the service layer, not here.
+const fleetStaff = requireRole(...ACCESS.fleetRead);
+vehicleRoutes.get(
+  '/',
+  fleetStaff,
+  validate({ query: listVehiclesQuerySchema }),
+  asyncHandler(getVehicles),
+);
+// Before '/:id', which would otherwise claim the word "summary".
+vehicleRoutes.get('/summary', fleetStaff, asyncHandler(getFleetSummary));
+vehicleRoutes.get('/:id', fleetStaff, validate({ params: idParamSchema }), asyncHandler(getVehicle));
 vehicleRoutes.get(
   '/:id/status-history',
+  fleetStaff,
   validate({ params: idParamSchema, query: historyQuerySchema }),
   asyncHandler(getVehicleHistory),
 );
 vehicleRoutes.get(
   '/:id/telemetry',
+  fleetStaff,
   validate({ params: idParamSchema, query: telemetryQuerySchema }),
   asyncHandler(getVehicleTelemetry),
 );
 vehicleRoutes.get(
   '/:id/maintenance',
+  fleetStaff,
   validate({ params: idParamSchema }),
   asyncHandler(getVehicleMaintenance),
 );

@@ -6,8 +6,9 @@ import { ROLES, VEHICLE_TYPES } from '@mm/shared-types';
 import type { LngLat, Role, VehicleStatus, VehicleType } from '@mm/shared-types';
 import { sequelize as defaultSequelize } from '../index.ts';
 import { ensureModels } from '../models/index.ts';
+import { newUnlockCode } from '../models/vehicle.ts';
 import { lineStringLiteral, pointLiteral, polygonLiteral } from '../spatial.ts';
-import { pointInZone, ZONES } from './belagavi-geo.ts';
+import { pointInZone, RENAMED_ZONES, ZONES } from './belagavi-geo.ts';
 import { loadOsmSegments } from './osm.ts';
 import { assertConnected } from './graph.ts';
 
@@ -116,6 +117,22 @@ export async function runSeed(options: SeedOptions = {}): Promise<SeedSummary> {
     }
 
     // ---- zones (natural key: code) ----------------------------------------
+    // A renamed zone keeps its row, so every trip and vehicle pointing at it
+    // follows. Inserting under the new code would orphan them on the old one.
+    for (const [from, to] of Object.entries(RENAMED_ZONES)) {
+      const [clash] = await s.query<{ id: string }>('SELECT id FROM zones WHERE code = ?', {
+        replacements: [to],
+        type: QueryTypes.SELECT,
+        transaction: t,
+      });
+      if (!clash) {
+        await s.query('UPDATE zones SET code = ? WHERE code = ?', {
+          replacements: [to, from],
+          transaction: t,
+        });
+      }
+    }
+
     for (const z of ZONES) {
       const boundary = polygonLiteral(z.boundary).val as string;
       const centroid = pointLiteral(z.centroid).val as string;
@@ -244,7 +261,7 @@ export async function runSeed(options: SeedOptions = {}): Promise<SeedSummary> {
       CMP: 4.5, // Camp — nightlife and retail, everything ends up here
       TLK: 3.0, // Tilakwadi — dense, well served
       SHP: 1.0, // Shahapur — busiest by day, stripped by morning
-      HND: 2.2,
+      KHB: 2.2, // Khade Bazar — the commercial core, around the bus stand
       ANG: 0.8,
       SDN: 1.6,
       VDG: 0.6, // residential edges, chronically short
@@ -279,15 +296,18 @@ export async function runSeed(options: SeedOptions = {}): Promise<SeedSummary> {
 
       await s.query(
         `INSERT INTO vehicles
-           (operator_id, home_zone_id, external_ref, type, status, battery_pct,
+           (operator_id, home_zone_id, external_ref, unlock_code, type, status, battery_pct,
             last_seen_at, last_position)
-         VALUES (?, ?, ?, ?, ?, ?, NOW(3), ${position})
+         VALUES (?, ?, ?, ?, ?, ?, ?, NOW(3), ${position})
          ON DUPLICATE KEY UPDATE
+           -- A printed QR sticker must keep working, so a re-seed never changes
+           -- a code; it only fills in one that is missing.
+           unlock_code = COALESCE(unlock_code, VALUES(unlock_code)),
            home_zone_id = VALUES(home_zone_id), type = VALUES(type),
            status = VALUES(status), battery_pct = VALUES(battery_pct),
            last_position = VALUES(last_position)`,
         {
-          replacements: [operatorId, zoneId, externalRef, type, status, battery],
+          replacements: [operatorId, zoneId, externalRef, newUnlockCode(), type, status, battery],
           transaction: t,
         },
       );

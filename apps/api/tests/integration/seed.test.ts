@@ -50,6 +50,18 @@ describe('Belagavi seed', () => {
     expect(secondRun).toEqual(firstRun);
   });
 
+  it('gives every vehicle a unique unlock code, so a fresh database can rent', async () => {
+    // The migration backfills existing rows, but on an empty database the
+    // seed runs after it, so the seed has to issue the codes itself.
+    const [row] = await s.query<{ total: string; coded: string; distinct_codes: string }>(
+      `SELECT COUNT(*) AS total, COUNT(unlock_code) AS coded,
+              COUNT(DISTINCT unlock_code) AS distinct_codes FROM vehicles`,
+      { type: QueryTypes.SELECT },
+    );
+    expect(Number(row!.coded)).toBe(Number(row!.total));
+    expect(Number(row!.distinct_codes)).toBe(Number(row!.total));
+  });
+
   it('seeds the counts the spec calls for', () => {
     expect(firstRun.zones).toBe(8);
     expect(firstRun.operators).toBe(2);

@@ -2,6 +2,7 @@ import rateLimit from 'express-rate-limit';
 import type { Options } from 'express-rate-limit';
 import type { Request } from 'express';
 import { env } from '../config/env.ts';
+import { verifyAccessToken } from '../lib/access-token.ts';
 import { fail } from '../lib/envelope.ts';
 
 /**
@@ -30,12 +31,34 @@ export const loginLimiter = rateLimit({
   skipSuccessfulRequests: true,
 });
 
+/**
+ * Whose allowance a request counts against.
+ *
+ * This limiter runs before the routers' requireAuth, so `req.user` is not set
+ * yet and every request used to fall back to the IP address. Reading the token
+ * here is what makes the limit per user: a rider's tab and an admin's tab on
+ * one machine would otherwise share a single allowance. An invalid token gets
+ * the IP bucket, and requireAuth rejects the request later.
+ */
+export function rateLimitKey(req: Request): string {
+  if (req.user?.id) return `user:${req.user.id}`;
+  const header = req.headers.authorization;
+  if (header?.startsWith('Bearer ')) {
+    try {
+      return `user:${verifyAccessToken(header.slice(7)).sub}`;
+    } catch {
+      // Fall through to the IP.
+    }
+  }
+  return req.ip ?? 'unknown';
+}
+
 /** 100 requests per minute per authenticated user, falling back to IP. */
 export const userLimiter = rateLimit({
   ...shared,
   windowMs: 60 * 1000,
   limit: 100,
-  keyGenerator: (req: Request) => req.user?.id ?? req.ip ?? 'unknown',
+  keyGenerator: rateLimitKey,
 });
 
 /** 1000 requests per minute per device key. */

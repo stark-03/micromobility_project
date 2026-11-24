@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
+import { Navigate, Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { Alert, Box, Button, Link, Paper, TextField, Typography } from '@mui/material';
 import type { AuthResponseDto } from '@mm/shared-types';
+import { canOpen, homeFor } from '../../lib/access.ts';
 import { api } from '../../lib/api.ts';
 import type { ApiClientError } from '../../lib/api.ts';
 import { useAuthStore } from '../../lib/auth-store.ts';
@@ -34,13 +35,21 @@ export function SignInScreen() {
   const setSession = useAuthStore((s) => s.setSession);
   const navigate = useNavigate();
   const location = useLocation();
-  const from = (location.state as { from?: string } | null)?.from ?? '/fleet';
+  const from = (location.state as { from?: string } | null)?.from;
+
+  // Already signed in (e.g. pressed Back after signing in): go to the dashboard.
+  const signedInAs = useAuthStore((st) => (st.accessToken ? st.user : null));
 
   const signIn = useMutation({
     mutationFn: () => api.post<AuthResponseDto>('/auth/login', { email, password }),
     onSuccess: (res) => {
       setSession(res.data.accessToken, res.data.user);
-      navigate(from, { replace: true });
+      // A deep link they were sent to before signing in wins, if their role can
+      // open it. Otherwise each role goes to its own dashboard.
+      const roles = res.data.user.roles;
+      navigate(from && from !== '/' && canOpen(roles, from) ? from : homeFor(roles), {
+        replace: true,
+      });
     },
   });
 
@@ -49,6 +58,10 @@ export function SignInScreen() {
     error?.code === 'VALIDATION_FAILED'
       ? error.details?.find((d) => d.path === path)?.message
       : undefined;
+
+  if (signedInAs && !signIn.isPending) {
+    return <Navigate to={homeFor(signedInAs.roles)} replace />;
+  }
 
   return (
     <Box className="flex min-h-screen items-center justify-center bg-ink-950 p-4">
@@ -64,7 +77,7 @@ export function SignInScreen() {
           Sign in
         </Typography>
         <Typography variant="body2" color="text.secondary" className="mb-6">
-          Belagavi simulator — planner, operator and analyst access.
+          Plan a trip and rent a vehicle, or run the city's fleet.
         </Typography>
 
         <Box

@@ -4,6 +4,7 @@ import 'leaflet/dist/leaflet.css';
 import { Box, Typography } from '@mui/material';
 import type { LngLat, RentalStationDto } from '@mm/shared-types';
 import { token } from '../../lib/tokens.ts';
+import { MapSourceFrame } from '../../components/MapSource.tsx';
 
 const BELAGAVI: [number, number] = [15.8497, 74.4977]; // Leaflet is [lat, lng]
 
@@ -248,8 +249,14 @@ export function RideMap({
     if (ridePath.length === 0) fittedRide.current = false;
   }, [ridePath, plannedPath]);
 
+  // What a reviewer is most likely checking: the vehicle being ridden, else the
+  // station they picked, else where they said they are.
+  const selected = stations.find((st) => st.id === selectedStationId) ?? null;
+  const focus = vehicleAt ?? selected?.location ?? origin;
+  const focusLabel = vehicleAt ? 'your vehicle' : selected ? selected.name : 'your location';
+
   return (
-    <Box className="relative h-full w-full">
+    <MapSourceFrame map={map} focus={focus} focusLabel={focusLabel}>
       <div ref={container} className="absolute inset-0" data-testid="ride-map" />
       {tilesFailed && (
         <Box className="pointer-events-none absolute bottom-8 left-1/2 z-[500] -translate-x-1/2 rounded-md border border-ink-700 bg-ink-900 px-3 py-1.5">
@@ -258,6 +265,6 @@ export function RideMap({
           </Typography>
         </Box>
       )}
-    </Box>
+    </MapSourceFrame>
   );
 }

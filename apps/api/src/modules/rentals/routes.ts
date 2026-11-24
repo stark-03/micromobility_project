@@ -1,8 +1,9 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { VEHICLE_TYPES } from '@mm/shared-types';
+import { ACCESS, VEHICLE_TYPES } from '@mm/shared-types';
 import { ok } from '../../lib/envelope.ts';
 import { requireAuth } from '../../middleware/auth.ts';
+import { requireRole } from '../../middleware/rbac.ts';
 import { asyncHandler } from '../../middleware/error.ts';
 import { body, query, validate } from '../../middleware/validate.ts';
 import {
@@ -24,12 +25,12 @@ import type { TrackInput } from './service.ts';
 
 /**
  * M14 rentals. Every route acts on the signed-in rider's own rentals; there is
- * no way to address another rider's trip, so there is nothing to authorize
- * beyond being signed in.
+ * no way to address another rider's trip. Fleet staff watch rentals from the
+ * Fleet screen rather than taking them.
  */
 export const rentalRoutes = Router();
 
-rentalRoutes.use(requireAuth);
+rentalRoutes.use(requireAuth, requireRole(...ACCESS.ride));
 
 const lngLat = z.tuple([z.number().min(-180).max(180), z.number().min(-90).max(90)]);
 const idParams = z.object({ id: z.string().regex(/^\d+$/) });

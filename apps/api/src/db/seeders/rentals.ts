@@ -3,7 +3,7 @@ import type { Sequelize, Transaction } from 'sequelize';
 import type { LngLat } from '@mm/shared-types';
 import { haversineM } from '../../lib/geo.ts';
 import { pointLiteral } from '../spatial.ts';
-import { ZONES } from './belagavi-geo.ts';
+import { RENAMED_ZONES, ZONES } from './belagavi-geo.ts';
 
 /**
  * M08 rental stations, and docking the seeded fleet into them.
@@ -14,10 +14,12 @@ import { ZONES } from './belagavi-geo.ts';
  * run short (the recommender has to suggest an alternative).
  */
 const LANDMARKS: Array<{ code: string; name: string; at: LngLat; capacity: number }> = [
-  { code: 'RS-CBS', name: 'Central Bus Stand', at: [74.4995, 15.8562], capacity: 20 },
-  { code: 'RS-RLY', name: 'Belagavi Railway Station', at: [74.5041, 15.8321], capacity: 16 },
-  { code: 'RS-FORT', name: 'Fort Road', at: [74.4968, 15.8517], capacity: 10 },
-  { code: 'RS-CAMP', name: 'Camp Market', at: [74.5108, 15.8607], capacity: 6 },
+  // OpenStreetMap's own positions (Nominatim, 2026-11-23); see charging.ts.
+  { code: 'RS-CBS', name: 'Central Bus Stand', at: [74.52024, 15.86159], capacity: 20 },
+  { code: 'RS-RLY', name: 'Belagavi Railway Station', at: [74.50894, 15.84906], capacity: 16 },
+  { code: 'RS-FORT', name: 'Belgaum Fort', at: [74.52416, 15.85839], capacity: 10 },
+  // Code kept so existing rows and docked vehicles move with it.
+  { code: 'RS-CAMP', name: 'Rani Chennamma Circle', at: [74.5117, 15.86729], capacity: 6 },
 ];
 
 /** How far a seeded vehicle may be from a station and still be docked there. */
@@ -46,6 +48,22 @@ export function stationSeeds(): Array<{
 export async function seedRentalStations(s: Sequelize, t: Transaction): Promise<number> {
   const seeds = stationSeeds();
 
+  // A zone's hub follows the zone when it is renamed, keeping its docked
+  // vehicles and trip history, rather than a second hub appearing beside it.
+  for (const [from, to] of Object.entries(RENAMED_ZONES)) {
+    const [clash] = await s.query<{ id: string }>('SELECT id FROM rental_stations WHERE code = ?', {
+      replacements: [`RS-${to}`],
+      type: QueryTypes.SELECT,
+      transaction: t,
+    });
+    if (!clash) {
+      await s.query('UPDATE rental_stations SET code = ? WHERE code = ?', {
+        replacements: [`RS-${to}`, `RS-${from}`],
+        transaction: t,
+      });
+    }
+  }
+
   for (const st of seeds) {
     const point = pointLiteral(st.at).val as string;
     await s.query(
@@ -53,7 +71,8 @@ export async function seedRentalStations(s: Sequelize, t: Transaction): Promise<
        SELECT :code, :name,
               (SELECT id FROM zones WHERE ST_Contains(boundary, ${point}) LIMIT 1),
               ${point}, :capacity
-       ON DUPLICATE KEY UPDATE name = :name, location = ${point}, capacity = :capacity`,
+       ON DUPLICATE KEY UPDATE name = :name, location = ${point}, capacity = :capacity,
+         zone_id = (SELECT id FROM zones WHERE ST_Contains(boundary, ${point}) LIMIT 1)`,
       { replacements: { code: st.code, name: st.name, capacity: st.capacity }, transaction: t },
     );
   }

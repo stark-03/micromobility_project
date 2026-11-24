@@ -193,6 +193,7 @@ interface TripRow {
   user_id: string;
   status: RentalStatus;
   vehicle_id: string;
+  operator_id: string;
   external_ref: string;
   unlock_code: string | null;
   vehicle_type: VehicleType;
@@ -222,7 +223,7 @@ interface TripRow {
 }
 
 const TRIP_SELECT = `
-  SELECT t.id, t.public_ref, t.user_id, t.status, t.vehicle_id,
+  SELECT t.id, t.public_ref, t.user_id, t.status, t.vehicle_id, t.operator_id,
          v.external_ref, v.unlock_code, v.type AS vehicle_type, v.battery_pct,
          t.start_station_id, ss.name AS start_station_name,
          t.end_station_id, es.name AS end_station_name,
@@ -410,9 +411,15 @@ async function recordStatus(
   );
 }
 
-function announce(vehicleId: string, changes: Array<[VehicleStatus, VehicleStatus]>): void {
+function announce(
+  vehicleId: string,
+  operatorId: string,
+  changes: Array<[VehicleStatus, VehicleStatus]>,
+): void {
   const at = new Date().toISOString();
-  for (const [from, to] of changes) bus.emit('vehicle:status', { vehicleId, from, to, at });
+  for (const [from, to] of changes) {
+    bus.emit('vehicle:status', { vehicleId, operatorId, from, to, at });
+  }
 }
 
 // ---- start -----------------------------------------------------------------
@@ -437,6 +444,7 @@ interface LockedVehicle {
 export async function startRental(userId: string, unlockCode: string): Promise<RentalDto> {
   const code = unlockCode.trim().toUpperCase();
   let vehicleId = '';
+  let operatorId = '';
 
   let tripId: string;
   try {
@@ -451,6 +459,7 @@ export async function startRental(userId: string, unlockCode: string): Promise<R
       );
       if (!v) throw AppError.notFound('VEHICLE_NOT_FOUND', `No vehicle has the code ${code}`);
       vehicleId = String(v.id);
+      operatorId = String(v.operator_id);
 
       const battery = v.battery_pct === null ? null : Number(v.battery_pct);
       if (!isRentable(v.type, v.status, battery)) {
@@ -520,7 +529,7 @@ export async function startRental(userId: string, unlockCode: string): Promise<R
     throw e;
   }
 
-  announce(vehicleId, [['available', 'in_use']]);
+  announce(vehicleId, operatorId, [['available', 'in_use']]);
   return getRental(userId, tripId);
 }
 
@@ -552,7 +561,7 @@ export async function trackRental(
   tripId: string,
   input: TrackInput,
 ): Promise<RentalDto> {
-  await sequelize.transaction(async (t) => {
+  const moved = await sequelize.transaction(async (t) => {
     const row = await lockOwnTrip(userId, tripId, t);
     if (row.status !== 'active') {
       throw AppError.conflict('RENTAL_NOT_FOUND', 'This ride has already ended.');
@@ -610,6 +619,19 @@ export async function trackRental(
         WHERE id = :id`,
       { replacements: { battery, id: row.vehicle_id }, transaction: t },
     );
+
+    return {
+      vehicleId: String(row.vehicle_id),
+      operatorId: String(row.operator_id),
+      batteryPct: battery,
+    };
+  });
+
+  // After the commit: staff must never be told about a move that rolled back.
+  bus.emit('vehicle:position', {
+    ...moved,
+    position: input.position,
+    at: new Date().toISOString(),
   });
 
   return getRental(userId, tripId);
@@ -637,6 +659,7 @@ export async function endRental(
 ): Promise<RentalDto> {
   const changes: Array<[VehicleStatus, VehicleStatus]> = [];
   let vehicleId = '';
+  let operatorId = '';
 
   const charge = await sequelize.transaction(async (t) => {
     const row = await lockOwnTrip(userId, tripId, t);
@@ -644,6 +667,7 @@ export async function endRental(
       throw AppError.conflict('RENTAL_NOT_FOUND', 'This ride has already ended.');
     }
     vehicleId = String(row.vehicle_id);
+    operatorId = String(row.operator_id);
 
     const [v] = await sequelize.query<LockedVehicle>(
       `SELECT id, operator_id, home_zone_id, station_id, type, status, battery_pct,
@@ -793,7 +817,7 @@ export async function endRental(
     };
   });
 
-  announce(vehicleId, changes);
+  announce(vehicleId, operatorId, changes);
   await settlePayment(charge.paymentId, charge.amountMinor, charge.currency, charge.ref);
   return getRental(userId, tripId);
 }

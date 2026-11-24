@@ -13,6 +13,11 @@ export const listUsersQuerySchema = z.object({
 
 export const setRolesSchema = z.object({
   roles: z.array(z.enum(ROLES)).min(1, 'A user must hold at least one role'),
+  /**
+   * The company an operator works for. Required when granting `operator` to
+   * someone who has none: an operator's every fleet view is scoped by it.
+   */
+  operatorId: z.string().regex(/^\d+$/).nullable().optional(),
 });
 
 export const createApiKeySchema = z.object({

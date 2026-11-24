@@ -42,3 +42,8 @@ npm-debug.log*
 # with `npm run guide:pdf`.
 Viva-Run-of-Show.pdf
 User-Manual.pdf
+*.pdf
+
+# Database dumps hold user accounts and password hashes. Share them outside git.
+micromobility.sql
+*.sql.gz

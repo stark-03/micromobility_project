@@ -62,6 +62,39 @@ POST   /api/v1/admin/api-keys
 
 ---
 
+### Who can do what
+
+The rules are one table, `ACCESS` in `packages/shared-types`. The API enforces it (`requireRole(...ACCESS.rule)`) and the web app reads the same table to hide what a role cannot use. See ADR 0005.
+
+| Screen / action | admin | planner | operator | analyst | commuter |
+|---|---|---|---|---|---|
+| Live, Plan | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Ride, Trips (rent a vehicle) | ✓ | | | | ✓ |
+| Fleet: view | ✓ | ✓ | own fleet | ✓ | |
+| Fleet: change vehicles, see unlock codes and rider names | ✓ | | own fleet | | |
+| Fleet: solve rebalancing | ✓ | ✓ | own fleet | | |
+| Sim: view | ✓ | ✓ | | ✓ | |
+| Sim: create and run scenarios | ✓ | ✓ | | | |
+| Data: view forecasts and models | ✓ | ✓ | | ✓ | |
+| Data: retrain the model | ✓ | | | ✓ | |
+| Admin: analytics | ✓ | ✓ | | ✓ | |
+| Admin: manage charging points | ✓ | ✓ | | | |
+| `/admin/*` API: users, roles, API keys | ✓ | | | | |
+
+**After sign-in each role lands on its own dashboard** (`DASHBOARDS` in shared-types), in priority order for someone with several roles:
+
+| Role | Dashboard |
+|---|---|
+| admin | `/admin`: analytics, **Users** (roles and operator company), charging |
+| operator | `/fleet`: their company's vehicles, live |
+| planner | `/sim`: scenarios |
+| analyst | `/data`: demand forecasts and model registry |
+| commuter | `/ride`: rent a vehicle |
+
+A deep link the user was sent to before signing in wins if their role can open it. Granting `operator` requires choosing the operator company (`PATCH /admin/users/:id/roles` with `operatorId`; companies from `GET /admin/operators`). An operator with no company sees no vehicles. Role changes take effect at the user's next sign-in or token refresh (≤ 15 min).
+
+---
+
 ## M02 — Traffic Monitoring
 
 **Purpose.** Ingest and expose live traffic state from GPS, IoT sensors and camera counters.
@@ -113,6 +146,22 @@ WS     vehicle:moved, vehicle:status
 ```
 
 **Screens.** Fleet table, Vehicle detail, Maintenance queue, Battery watchlist.
+
+---
+
+### Live fleet feed
+
+`GET /api/v1/vehicles/summary` returns counts by status and how many vehicles are on rentals now. `GET /vehicles` adds `activeRental` to each vehicle, with rented vehicles first.
+
+Socket events, pushed the moment a change commits:
+
+| Event | Goes to | Payload |
+|---|---|---|
+| `vehicle:status` | `fleet:all`, `operator:<id>` | vehicleId, operatorId, from, to, at |
+| `vehicle:position` | `fleet:all`, `operator:<id>` | vehicleId, operatorId, position, batteryPct, at; no rider |
+| `stations:changed` | everyone | at |
+
+Admins, planners and analysts join `fleet:all` on connect; operators join their own `operator:<id>`. Riders join neither.
 
 ---
 
@@ -480,7 +529,7 @@ GET    /api/v1/rentals/eco-summary
 GET    /api/v1/geo/search?q=                # choose places by name
 ```
 
-**Screens.** Ride (find, recommend, scan, ride, return), Trips (history, receipts, eco summary), Fleet (printable QR sticker per vehicle).
+**Screens.** Ride (find, recommend, scan, ride, return), Trips (history, receipts, eco summary), Fleet (printable QR sticker per vehicle, live rider column).
 
 ---
 

@@ -28,6 +28,7 @@ import type {
   SimulationRunDto,
   SimulationTimelinePointDto,
 } from '@mm/shared-types';
+import { useCan } from '../../lib/access.ts';
 import { api } from '../../lib/api.ts';
 import { EmptyState, ErrorState, LoadingState } from '../../components/StateViews.tsx';
 import { NewScenarioDialog } from './NewScenarioDialog.tsx';
@@ -256,6 +257,7 @@ function ScenarioCard({
 }
 
 export function SimScreen() {
+  const canEdit = useCan('simWrite');
   const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [compareWith, setCompareWith] = useState<string>('');
@@ -332,17 +334,19 @@ export function SimScreen() {
           <Typography variant="overline" color="text.secondary">
             Scenarios
           </Typography>
-          <Button size="small" variant="contained" onClick={() => setDialogOpen(true)}>
-            New
-          </Button>
+          {canEdit && (
+            <Button size="small" variant="contained" onClick={() => setDialogOpen(true)}>
+              New
+            </Button>
+          )}
         </Box>
 
         {list.length === 0 ? (
           <EmptyState
             title="No scenarios yet"
             action="Create one to test a policy before the city builds it."
-            actionLabel="New scenario"
-            onAction={() => setDialogOpen(true)}
+            actionLabel={canEdit ? 'New scenario' : undefined}
+            onAction={canEdit ? () => setDialogOpen(true) : undefined}
           />
         ) : (
           list.map((s) => (
@@ -377,13 +381,15 @@ export function SimScreen() {
                     </Typography>
                   )}
                 </Box>
-                <Button
-                  variant="contained"
-                  onClick={() => run.mutate(selected.id)}
-                  disabled={run.isPending || activeRun?.status === 'running'}
-                >
-                  {run.isPending ? 'Queuing…' : 'Run simulation'}
-                </Button>
+                {canEdit && (
+                  <Button
+                    variant="contained"
+                    onClick={() => run.mutate(selected.id)}
+                    disabled={run.isPending || activeRun?.status === 'running'}
+                  >
+                    {run.isPending ? 'Queuing…' : 'Run simulation'}
+                  </Button>
+                )}
               </Box>
 
               {activeRun && activeRun.status !== 'completed' && activeRun.status !== 'failed' && (

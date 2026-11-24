@@ -45,6 +45,14 @@ export function canJoin(user: SocketUser, room: string): boolean {
         user.roles.includes('analyst') ||
         (user.roles.includes('operator') && id === user.operatorId)
       );
+    // The whole fleet's live feed. Operators get their own `operator:` room.
+    case 'fleet':
+      return (
+        id === 'all' &&
+        (user.roles.includes('admin') ||
+          user.roles.includes('planner') ||
+          user.roles.includes('analyst'))
+      );
     // Simulation runs — planners and above. Sprint 4 populates these.
     case 'run':
       return (
@@ -55,6 +63,21 @@ export function canJoin(user: SocketUser, room: string): boolean {
     default:
       return false;
   }
+}
+
+/**
+ * The rooms a user joins on connect, beyond their own `user:` room.
+ *
+ * Fleet events go only to these rooms, so a rider's socket never receives
+ * another operator's vehicles or anyone's movements.
+ */
+export function automaticRooms(user: SocketUser): string[] {
+  const rooms: string[] = [];
+  if (canJoin(user, 'fleet:all')) rooms.push('fleet:all');
+  if (user.operatorId && canJoin(user, `operator:${user.operatorId}`)) {
+    rooms.push(`operator:${user.operatorId}`);
+  }
+  return rooms;
 }
 
 let io: Server | null = null;
@@ -94,6 +117,7 @@ export function attachGateway(server: HttpServer): Server {
     const user = socket.mmUser!;
     // Everyone lands in their own room; nothing else is automatic.
     void socket.join(`user:${user.id}`);
+    for (const room of automaticRooms(user)) void socket.join(room);
 
     socket.on('subscribe', (room: unknown, ack?: (ok: boolean) => void) => {
       if (typeof room !== 'string' || !canJoin(user, room)) {
@@ -120,7 +144,12 @@ export function attachGateway(server: HttpServer): Server {
     io?.emit('weather:update', payload);
   });
   bus.on('vehicle:status', (payload) => {
-    io?.emit('vehicle:status', payload);
+    io?.to(['fleet:all', `operator:${payload.operatorId}`]).emit('vehicle:status', payload);
+    // Riders need to know station counts moved, not which vehicle did what.
+    io?.emit('stations:changed', { at: payload.at });
+  });
+  bus.on('vehicle:position', (payload) => {
+    io?.to(['fleet:all', `operator:${payload.operatorId}`]).emit('vehicle:position', payload);
   });
   bus.on('vehicle:created', (payload) => {
     io?.to(`operator:${payload.operatorId}`).emit('vehicle:created', payload);
