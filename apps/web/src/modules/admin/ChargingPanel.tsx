@@ -16,6 +16,7 @@ import { api } from '../../lib/api.ts';
 import type { ApiClientError } from '../../lib/api.ts';
 import { EmptyState, LoadingState } from '../../components/StateViews.tsx';
 import { token } from '../../lib/tokens.ts';
+import { MapSourceFrame } from '../../components/MapSource.tsx';
 
 const BELAGAVI: [number, number] = [15.8497, 74.4977];
 
@@ -159,7 +160,9 @@ export function ChargingPanel() {
   return (
     <Box className="flex flex-col gap-4 lg:flex-row">
       <Box className="min-h-[440px] flex-1 overflow-hidden rounded-lg border border-ink-700">
-        <div ref={container} className="h-full min-h-[440px] w-full" data-testid="charging-map" />
+        <MapSourceFrame map={map} focus={pending} focusLabel="the new station">
+          <div ref={container} className="h-full min-h-[440px] w-full" data-testid="charging-map" />
+        </MapSourceFrame>
       </Box>
 
       <Box className="flex w-full flex-col gap-3 lg:w-[360px] lg:shrink-0">

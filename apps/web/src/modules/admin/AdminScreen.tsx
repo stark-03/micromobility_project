@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useMemo, useState } from 'react';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { Box, Button, MenuItem, Paper, Tab, Tabs, TextField, Tooltip, Typography } from '@mui/material';
 import {
   Bar,
@@ -12,10 +12,12 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { useCan } from '../../lib/access.ts';
 import { api } from '../../lib/api.ts';
 import { EmptyState, ErrorState, LoadingState } from '../../components/StateViews.tsx';
-import { authSnapshot } from '../../lib/auth-store.ts';
+import { authSnapshot, useAuthStore } from '../../lib/auth-store.ts';
 import { ChargingPanel } from './ChargingPanel.tsx';
+import { UsersPanel } from './UsersPanel.tsx';
 
 /**
  * M11 analytics + M10 environmental.
@@ -112,10 +114,21 @@ function Stat({
   return hint ? <Tooltip title={hint}>{tile}</Tooltip> : tile;
 }
 
-type TabKey = 'analytics' | 'charging';
+type TabKey = 'analytics' | 'users' | 'charging';
+
+const TITLES: Record<TabKey, string> = {
+  analytics: 'City analytics',
+  users: 'Users and roles',
+  charging: 'Charging infrastructure',
+};
 
 export function AdminScreen() {
   const [tab, setTab] = useState<TabKey>('analytics');
+  const canManageCharging = useCan('chargingManage');
+  // Users and roles, and building rollups on demand, are admin-only. Planners
+  // and analysts reach this screen for the analytics alone.
+  const isAdmin = useAuthStore((st) => st.user?.roles.includes('admin') ?? false);
+  const [building, setBuilding] = useState(false);
   const [days, setDays] = useState(30);
   const from = useMemo(() => isoDaysAgo(days), [days]);
   const to = useMemo(() => new Date().toISOString().slice(0, 10), []);
@@ -124,6 +137,13 @@ export function AdminScreen() {
   const summary = useQuery({
     queryKey: ['analytics', 'summary', from, to],
     queryFn: () => api.get<SummaryDto>(`/analytics/summary?${range}`),
+    // While a rollup someone just asked for is running, look for its results.
+    refetchInterval: building ? 3000 : false,
+  });
+
+  const buildRollups = useMutation({
+    mutationFn: () => api.post<{ jobId: string }>('/analytics/rollup'),
+    onSuccess: () => setBuilding(true),
   });
 
   const series = useQuery({
@@ -173,6 +193,15 @@ export function AdminScreen() {
         ? 'empty'
         : 'ready';
 
+  // The rollup landed: stop polling and load the charts it feeds.
+  useEffect(() => {
+    if (building && analyticsState === 'ready') {
+      setBuilding(false);
+      void series.refetch();
+      void environment.refetch();
+    }
+  }, [building, analyticsState]);
+
   const s = summary.data?.data ?? null;
   const points = series.data?.data ?? [];
   const env = environment.data?.data ?? null;
@@ -189,17 +218,19 @@ export function AdminScreen() {
             Admin
           </Typography>
           <Typography variant="h2" sx={{ fontSize: 30 }}>
-            {tab === 'analytics' ? 'City analytics' : 'Charging infrastructure'}
+            {TITLES[tab]}
           </Typography>
         </Box>
 
         <Tabs value={tab} onChange={(_e, v: TabKey) => setTab(v)}>
           <Tab value="analytics" label="Analytics" />
-          <Tab value="charging" label="Charging" />
+          {isAdmin && <Tab value="users" label="Users" />}
+          {canManageCharging && <Tab value="charging" label="Charging" />}
         </Tabs>
       </Box>
 
       {tab === 'charging' && <ChargingPanel />}
+      {tab === 'users' && isAdmin && <UsersPanel />}
 
       {tab === 'analytics' && analyticsState === 'error' && (
         <ErrorState error={summary.error} onRetry={() => void summary.refetch()} />
@@ -207,8 +238,16 @@ export function AdminScreen() {
       {tab === 'analytics' && analyticsState === 'loading' && <LoadingState />}
       {tab === 'analytics' && analyticsState === 'empty' && (
         <EmptyState
-          title="No rollups yet"
-          action="The dashboard reads nightly rollup tables, and none have been built. Run `npm run rollup` to backfill from the seeded trip history."
+          title={building ? 'Building rollups…' : 'No rollups yet'}
+          action={
+            building
+              ? 'Summarising the last 45 days of trips. This usually takes under a minute; the dashboard fills in by itself.'
+              : isAdmin
+                ? 'This dashboard reads daily summaries that are built every night at 02:00, and none exist yet. Build them now from the trip history.'
+                : 'This dashboard reads daily summaries that are built every night at 02:00, and none exist yet. Ask an admin to build them.'
+          }
+          actionLabel={isAdmin && !building ? 'Build now' : undefined}
+          onAction={isAdmin && !building ? () => buildRollups.mutate() : undefined}
         />
       )}
 

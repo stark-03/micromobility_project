@@ -97,10 +97,14 @@ describe('GET /scenarios', () => {
     expect(res.body.data.every((x: { runCount: number }) => x.runCount === 0)).toBe(true);
   });
 
-  it('is readable by any signed-in role', async () => {
-    const s = await authAs(app, 'commuter');
-    const res = await request(app).get('/api/v1/scenarios').set(...s.auth);
-    expect(res.status).toBe(200);
+  it('is readable by planning staff, not by riders', async () => {
+    const analyst = await authAs(app, 'analyst');
+    const ok = await request(app).get('/api/v1/scenarios').set(...analyst.auth);
+    expect(ok.status).toBe(200);
+
+    const rider = await authAs(app, 'commuter');
+    const no = await request(app).get('/api/v1/scenarios').set(...rider.auth);
+    expect(no.status).toBe(403);
   });
 });
 

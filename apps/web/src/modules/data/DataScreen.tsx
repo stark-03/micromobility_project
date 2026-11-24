@@ -25,6 +25,7 @@ import {
   YAxis,
 } from 'recharts';
 import type { ZoneDto } from '@mm/shared-types';
+import { useCan } from '../../lib/access.ts';
 import { api } from '../../lib/api.ts';
 import type { ApiClientError } from '../../lib/api.ts';
 import { EmptyState, ErrorState, LoadingState } from '../../components/StateViews.tsx';
@@ -143,6 +144,7 @@ export function DataScreen() {
     retry: false,
   });
 
+  const canTrain = useCan('modelTrain');
   const train = useMutation({
     mutationFn: () => api.post<{ jobId: string }>('/predictions/train'),
     onSuccess: () => {
@@ -189,9 +191,11 @@ export function DataScreen() {
             Demand forecasting
           </Typography>
         </Box>
-        <Button variant="outlined" onClick={() => train.mutate()} disabled={train.isPending}>
-          {train.isPending ? 'Queuing…' : 'Retrain model'}
-        </Button>
+        {canTrain && (
+          <Button variant="outlined" onClick={() => train.mutate()} disabled={train.isPending}>
+            {train.isPending ? 'Queuing…' : 'Retrain model'}
+          </Button>
+        )}
       </Box>
 
       {/* Headline figures. design.md §1: a forecast never ships as a bare number,
@@ -263,8 +267,8 @@ export function DataScreen() {
           <EmptyState
             title="No forecast yet"
             action="Train the model first — it needs history from npm run demand:backfill, and the ML service must be running."
-            actionLabel="Retrain model"
-            onAction={() => train.mutate()}
+            actionLabel={canTrain ? 'Retrain model' : undefined}
+            onAction={canTrain ? () => train.mutate() : undefined}
           />
         ) : (
           <Box className="h-[320px] w-full">

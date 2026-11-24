@@ -29,7 +29,8 @@ Dept. of CSE, AITM, Belagavi.
 | M12 weather · M15 GBFS feed | |
 | **M14 rentals**: QR unlock, GPS tracking, fare quotes, mock payments, receipts, eco summary | |
 
-Screens: Live, Plan, **Ride**, **Trips**, Sim, Fleet, Data and Admin. Renting is covered in
+Screens: Live, Plan, **Ride**, **Trips**, Sim, Fleet, Data and Admin. Each role sees only its
+own; the role table is in MODULES.md. The Fleet screen updates live as riders rent, ride and return. Renting is covered in
 ADR 0004 and MODULES.md (M08, M09, M14). Payments use a mock gateway
 (`PAYMENT_GATEWAY=mock`) that approves every charge; no card data is ever handled.
 

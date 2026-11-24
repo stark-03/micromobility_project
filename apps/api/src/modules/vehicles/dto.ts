@@ -106,6 +106,9 @@ export interface VehicleRow {
   unlock_code: string | null;
   station_id: string | null;
   station_name: string | null;
+  rental_started_at: Date | null;
+  rental_distance_m: string | null;
+  rider_name: string | null;
   type: VehicleType;
   status: VehicleStatus;
   battery_pct: number | null;
@@ -126,6 +129,13 @@ export function toVehicleDto(r: VehicleRow): VehicleDto {
     unlockCode: r.unlock_code,
     stationId: r.station_id === null ? null : String(r.station_id),
     stationName: r.station_name,
+    activeRental: r.rental_started_at
+      ? {
+          riderName: r.rider_name,
+          startedAt: new Date(r.rental_started_at).toISOString(),
+          distanceM: Math.round(Number(r.rental_distance_m ?? 0)),
+        }
+      : null,
     type: r.type,
     status: r.status,
     batteryPct: r.battery_pct === null ? null : Number(r.battery_pct),

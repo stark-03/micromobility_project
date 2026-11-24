@@ -19,6 +19,7 @@ import {
   changeStatus,
   createTicket,
   createVehicle,
+  fleetSummary,
   getVehicleRow,
   listStatusHistory,
   listTelemetry,
@@ -26,6 +27,7 @@ import {
   listVehicles,
   updateTicket,
   updateVehicle,
+  visibleTo,
 } from './service.ts';
 
 function caller(req: Request): Caller {
@@ -39,9 +41,14 @@ export async function getVehicles(req: Request, res: Response): Promise<void> {
   res.json(ok(page.vehicles, { page: q.page, limit: q.limit, total: page.total }));
 }
 
+export async function getFleetSummary(req: Request, res: Response): Promise<void> {
+  res.json(ok(await fleetSummary(caller(req))));
+}
+
 export async function getVehicle(req: Request, res: Response): Promise<void> {
   const { id } = params<{ id: string }>(req);
-  res.json(ok(toVehicleDto(await getVehicleRow(caller(req), id))));
+  const c = caller(req);
+  res.json(ok(visibleTo(c, toVehicleDto(await getVehicleRow(c, id)))));
 }
 
 export async function postVehicle(req: Request, res: Response): Promise<void> {

@@ -128,6 +128,30 @@ describe('GET /geo/search', () => {
     expect(kinds.indexOf('rental_station')).toBeLessThan(kinds.indexOf('street'));
   });
 
+  it('survives tables whose text columns have different collations', async () => {
+    // The database on the Windows machine came from a dump plus later
+    // migrations, so its tables disagreed, and MySQL refused the whole UNION
+    // with "Illegal mix of collations" on every keystroke.
+    const s = await authAs(app, 'commuter');
+    await sequelize.query(
+      `ALTER TABLE rental_stations
+         MODIFY name VARCHAR(120) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL`,
+    );
+    try {
+      await sequelize.query(
+        `INSERT INTO rental_stations (code, name, location) VALUES ('RS-C', 'Camp Market', ${pointLiteral([74.5108, 15.8607]).val})`,
+      );
+      const res = await request(app).get('/api/v1/geo/search?q=camp').set(...s.auth);
+      expect(res.status).toBe(200);
+      expect(res.body.data.map((p: { kind: string }) => p.kind)).toContain('rental_station');
+    } finally {
+      await sequelize.query(
+        `ALTER TABLE rental_stations
+           MODIFY name VARCHAR(120) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL`,
+      );
+    }
+  });
+
   it('treats LIKE wildcards in the query as literal characters', async () => {
     const s = await authAs(app, 'commuter');
     const res = await request(app)

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Role } from '@mm/shared-types';
-import { canJoin } from '../../src/realtime/gateway.ts';
+import { automaticRooms, canJoin } from '../../src/realtime/gateway.ts';
 
 function user(roles: Role[], id = '1', operatorId: string | null = null) {
   return { id, roles, operatorId };
@@ -60,5 +60,20 @@ describe('socket room authorization', () => {
   it('does not let a role list be widened by a crafted room string', () => {
     // A room like "operator:2:admin" must not squeak through on a prefix match.
     expect(canJoin(user(['operator'], '7', '2'), 'operator:3:2')).toBe(false);
+  });
+});
+
+describe('the live fleet feed', () => {
+  it('reaches city-wide staff, the operator of those vehicles, and no rider', () => {
+    expect(automaticRooms(user(['admin']))).toEqual(['fleet:all']);
+    expect(automaticRooms(user(['planner']))).toEqual(['fleet:all']);
+    expect(automaticRooms(user(['analyst']))).toEqual(['fleet:all']);
+    expect(automaticRooms(user(['operator'], '4', '2'))).toEqual(['operator:2']);
+    expect(automaticRooms(user(['commuter']))).toEqual([]);
+  });
+
+  it('cannot be joined by asking for it', () => {
+    expect(canJoin(user(['commuter']), 'fleet:all')).toBe(false);
+    expect(canJoin(user(['operator'], '4', '2'), 'fleet:all')).toBe(false);
   });
 });

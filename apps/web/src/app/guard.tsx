@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
-import { Box, CircularProgress, Typography } from '@mui/material';
+import { Link as RouterLink, Navigate, useLocation } from 'react-router-dom';
+import { Box, Button, CircularProgress, Typography } from '@mui/material';
 import type { Role } from '@mm/shared-types';
+import { homeFor } from '../lib/access.ts';
 import { api } from '../lib/api.ts';
 import { useAuthStore } from '../lib/auth-store.ts';
 
@@ -16,12 +17,18 @@ import { useAuthStore } from '../lib/auth-store.ts';
  * The frontend hides UI it cannot use, but is never the gate. Every one of
  * these checks is enforced again server-side (design.md §7).
  */
+/** `/` sends each role to its own main screen. */
+export function HomeRedirect() {
+  const roles = useAuthStore((s) => s.user?.roles);
+  return <Navigate to={homeFor(roles)} replace />;
+}
+
 export function RequireAuth({
   children,
   roles,
 }: {
   children: React.ReactNode;
-  roles?: Role[];
+  roles?: readonly Role[];
 }) {
   const { accessToken, user, bootstrapping, finishBootstrap } = useAuthStore();
   const [attempted, setAttempted] = useState(false);
@@ -62,6 +69,9 @@ export function RequireAuth({
         <Typography variant="body2" color="text.secondary">
           This screen needs one of: {roles.join(', ')}.
         </Typography>
+        <Button component={RouterLink} to={homeFor(user?.roles)} variant="outlined" className="mt-2">
+          Go to my home screen
+        </Button>
       </Box>
     );
   }

@@ -1,3 +1,4 @@
+import { ACCESS } from '@mm/shared-types';
 import { Router } from 'express';
 import { QueryTypes } from 'sequelize';
 import { z } from 'zod';
@@ -7,13 +8,15 @@ import { cache } from '../../cache/index.ts';
 import { CACHE_KEYS } from '../../cache/keys.ts';
 import { ok } from '../../lib/envelope.ts';
 import { requireAuth } from '../../middleware/auth.ts';
+import { requireRole } from '../../middleware/rbac.ts';
 import { asyncHandler } from '../../middleware/error.ts';
 import { query, validate } from '../../middleware/validate.ts';
+import { enqueue } from '../../jobs/runner.ts';
 import { emissionFactors } from './rollups.ts';
 
 export const analyticsRoutes = Router();
 
-analyticsRoutes.use(requireAuth);
+analyticsRoutes.use(requireAuth, requireRole(...ACCESS.analytics));
 
 /**
  * M11, basic half.
@@ -226,6 +229,26 @@ analyticsRoutes.get(
         { from, to },
       ),
     );
+  }),
+);
+
+/** Matches `npm run rollup`. */
+const ROLLUP_BACKFILL_DAYS = 45;
+
+/**
+ * Build the rollups now, instead of waiting for 02:00.
+ *
+ * A fresh database has none, so the dashboard an admin lands on is empty
+ * until the first nightly run. This queues the same job the schedule runs,
+ * over the same window as `npm run rollup`. Admin only: a rollup scans every
+ * trip in the window.
+ */
+analyticsRoutes.post(
+  '/rollup',
+  requireRole('admin'),
+  asyncHandler(async (_req, res) => {
+    const jobId = await enqueue('rollup-daily', { days: ROLLUP_BACKFILL_DAYS });
+    res.status(202).json(ok({ jobId, status: 'queued', days: ROLLUP_BACKFILL_DAYS }));
   }),
 );
 

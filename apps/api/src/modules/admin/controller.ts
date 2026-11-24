@@ -8,6 +8,7 @@ import type { CreateApiKeyInput, ListUsersQuery, SetRolesInput } from './dto.ts'
 import {
   createApiKey,
   listApiKeys,
+  listOperators,
   listUsers,
   revokeApiKey,
   setRoles,
@@ -24,10 +25,14 @@ export async function getUsers(req: Request, res: Response): Promise<void> {
   res.json(ok(page.users, { page: q.page, limit: q.limit, total: page.total }));
 }
 
+export async function getOperators(_req: Request, res: Response): Promise<void> {
+  res.json(ok(await listOperators()));
+}
+
 export async function patchUserRoles(req: Request, res: Response): Promise<void> {
   const { id } = params<{ id: string }>(req);
-  const { roles } = body<SetRolesInput>(req);
-  const change = await setRoles(id, roles);
+  const { roles, operatorId } = body<SetRolesInput>(req);
+  const change = await setRoles(id, roles, operatorId);
 
   await record({
     actorType: 'user',
@@ -37,7 +42,7 @@ export async function patchUserRoles(req: Request, res: Response): Promise<void>
     subjectId: id,
     // Both sides recorded: "who has admin now" is answerable from the trail
     // alone, without replaying the current table.
-    metadata: { before: change.before, after: change.after },
+    metadata: { before: change.before, after: change.after, operatorId: change.user.operatorId },
     ip: req.ip,
   });
 

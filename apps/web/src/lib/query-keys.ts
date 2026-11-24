@@ -17,6 +17,7 @@ export const queryKeys = {
   vehicles: {
     all: ['vehicles'] as const,
     list: (params: VehicleListParams) => ['vehicles', 'list', params] as const,
+    summary: ['vehicles', 'summary'] as const,
     detail: (id: string) => ['vehicles', 'detail', id] as const,
   },
   users: {

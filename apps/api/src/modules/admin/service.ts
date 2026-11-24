@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import { Op } from 'sequelize';
 import type { Role as RoleName, UserDto } from '@mm/shared-types';
 import { sequelize } from '../../db/index.ts';
-import { ApiKey, Role, User, UserRole } from '../../db/models/index.ts';
+import { ApiKey, Operator, Role, User, UserRole } from '../../db/models/index.ts';
 import { AppError } from '../../lib/errors.ts';
 import { hashApiKey } from '../../middleware/auth.ts';
 import { toUserDto } from '../auth/dto.ts';
@@ -47,9 +47,31 @@ export interface RoleChange {
   after: RoleName[];
 }
 
-export async function setRoles(userId: string, next: RoleName[]): Promise<RoleChange> {
+export async function setRoles(
+  userId: string,
+  next: RoleName[],
+  operatorId?: string | null,
+): Promise<RoleChange> {
   const user = await User.findByPk(userId, { include: [{ model: Role, as: 'roles' }] });
   if (!user) throw AppError.notFound('USER_NOT_FOUND', 'User not found');
+
+  // Which company, if any, the user belongs to afterwards. An operator must
+  // have one; anyone else keeps none, so a demoted operator cannot carry a
+  // company's scope into another role.
+  const nextOperator = next.includes('operator')
+    ? (operatorId ?? (user.operator_id === null ? null : String(user.operator_id)))
+    : null;
+  if (next.includes('operator')) {
+    if (!nextOperator) {
+      throw AppError.validationFailed([
+        { path: 'operatorId', message: 'Choose which operator company this user works for' },
+      ]);
+    }
+    const company = await Operator.findByPk(nextOperator);
+    if (!company) {
+      throw AppError.validationFailed([{ path: 'operatorId', message: 'No such operator' }]);
+    }
+  }
 
   const before = ((user as User & { roles?: Role[] }).roles ?? []).map((r) => r.name);
   const unique = [...new Set(next)];
@@ -73,6 +95,7 @@ export async function setRoles(userId: string, next: RoleName[]): Promise<RoleCh
     const all = await Role.findAll({ transaction: t });
     const idByName = new Map(all.map((r) => [r.name, r.id]));
 
+    await User.update({ operator_id: nextOperator }, { where: { id: userId }, transaction: t });
     await UserRole.destroy({ where: { user_id: userId }, transaction: t });
     for (const name of unique) {
       const roleId = idByName.get(name);
@@ -83,6 +106,12 @@ export async function setRoles(userId: string, next: RoleName[]): Promise<RoleCh
 
   const fresh = await User.findByPk(userId, { include: [{ model: Role, as: 'roles' }] });
   return { user: toUserDto(fresh!), before, after: unique };
+}
+
+/** The operator companies, for choosing one when granting the operator role. */
+export async function listOperators(): Promise<Array<{ id: string; code: string; name: string }>> {
+  const rows = await Operator.findAll({ order: [['name', 'ASC']] });
+  return rows.map((o) => ({ id: String(o.id), code: o.code, name: o.name }));
 }
 
 // ---- API keys --------------------------------------------------------------

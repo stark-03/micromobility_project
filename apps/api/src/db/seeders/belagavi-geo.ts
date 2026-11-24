@@ -27,7 +27,6 @@ export const CITY_BBOX = {
   maxLat: 15.882,
 };
 
-const CITY_W = CITY_BBOX.maxLng - CITY_BBOX.minLng;
 const CITY_H = CITY_BBOX.maxLat - CITY_BBOX.minLat;
 
 /**
@@ -54,81 +53,103 @@ export interface ZoneSeed {
   boundary: LngLat[];
 }
 
-/** Real localities with their approximate real positions, used for placement. */
-const LOCALITIES = [
-  { code: 'SDN', name: 'Sadashiv Nagar', at: [74.495, 15.87] as LngLat, populationIx: 5.1 },
-  { code: 'CMP', name: 'Camp', at: [74.51, 15.86] as LngLat, populationIx: 7.1 },
-  { code: 'HND', name: 'Hindwadi', at: [74.52, 15.855] as LngLat, populationIx: 6.9 },
-  { code: 'SHP', name: 'Shahapur', at: [74.49, 15.848] as LngLat, populationIx: 9.2 },
-  { code: 'TLK', name: 'Tilakwadi', at: [74.506, 15.8395] as LngLat, populationIx: 8.4 },
-  { code: 'ANG', name: 'Angol', at: [74.515, 15.835] as LngLat, populationIx: 6.6 },
-  { code: 'VDG', name: 'Vadgaon', at: [74.485, 15.83] as LngLat, populationIx: 6.3 },
-  { code: 'UDY', name: 'Udyambag', at: [74.475, 15.82] as LngLat, populationIx: 5.8 },
+/**
+ * Belagavi localities at their real positions.
+ *
+ * Every coordinate is OpenStreetMap's own point for that place (looked up with
+ * Nominatim, 2026-11-23), so a zone's centre sits exactly where the street map
+ * underneath labels it. The first version used hand-typed estimates, which were
+ * up to 4 km out — far enough that a pin read "Vadgaon" on the wrong side of the
+ * city once you zoomed in.
+ *
+ * Khade Bazar replaced Hindwadi: OSM has no point for Hindwadi as a locality, and
+ * its road sits about 600 m from both Shahapur and Vadgaon, which left the city
+ * centre (bus stand, fort, Rani Chennamma Circle) without a zone of its own.
+ */
+export const LOCALITIES = [
+  { code: 'SDN', name: 'Sadashiv Nagar', at: [74.50848, 15.8783] as LngLat, populationIx: 5.1 },
+  { code: 'CMP', name: 'Camp', at: [74.49966, 15.8515] as LngLat, populationIx: 7.1 },
+  { code: 'KHB', name: 'Khade Bazar', at: [74.51272, 15.86] as LngLat, populationIx: 6.9 },
+  { code: 'SHP', name: 'Shahapur', at: [74.51777, 15.84007] as LngLat, populationIx: 9.2 },
+  { code: 'TLK', name: 'Tilakwadi', at: [74.50193, 15.83686] as LngLat, populationIx: 8.4 },
+  { code: 'ANG', name: 'Angol', at: [74.5031, 15.823] as LngLat, populationIx: 6.6 },
+  { code: 'VDG', name: 'Vadgaon', at: [74.52421, 15.83359] as LngLat, populationIx: 6.3 },
+  { code: 'UDY', name: 'Udyambag', at: [74.49263, 15.81746] as LngLat, populationIx: 5.8 },
 ];
 
-const ZONE_COLS = 4;
-const ZONE_ROWS = 2;
+/** Zone codes that have been renamed: old code → new. The seeder renames the row in place. */
+export const RENAMED_ZONES: Readonly<Record<string, string>> = { HND: 'KHB' };
 
 /**
- * Zones TILE the city rather than floating as scattered boxes.
- *
- * The first version placed a fixed-size square around each real centroid, which
- * left gaps, overlaps, and rectangles sitting at odd angles to the street grid —
- * it looked like an accident. A partition covers the map exactly once and reads
- * as administrative wards, which is what zones actually are.
- *
- * Each tile keeps a real locality name, assigned by which locality's true
- * position falls nearest that tile, so the geography stays broadly honest:
- * Sadashiv Nagar lands north, Udyambag south-west.
+ * East-west degrees are shorter than north-south ones this far from the
+ * equator. Scaling longitude by cos(latitude) makes "nearest" mean nearest on
+ * the ground, not nearest in raw degrees.
  */
-export const ZONES: ZoneSeed[] = (() => {
-  const tileW = CITY_W / ZONE_COLS;
-  const tileH = CITY_H / ZONE_ROWS;
+const LNG_SCALE = Math.cos((15.85 * Math.PI) / 180);
 
-  const tiles: Array<{ centre: LngLat; boundary: LngLat[] }> = [];
-  for (let r = 0; r < ZONE_ROWS; r++) {
-    for (let c = 0; c < ZONE_COLS; c++) {
-      const lng0 = CITY_BBOX.minLng + c * tileW;
-      const lat0 = CITY_BBOX.minLat + r * tileH;
-      const lng1 = lng0 + tileW;
-      const lat1 = lat0 + tileH;
-      tiles.push({
-        centre: [Number((lng0 + tileW / 2).toFixed(6)), Number((lat0 + tileH / 2).toFixed(6))],
-        boundary: [
-          [Number(lng0.toFixed(6)), Number(lat0.toFixed(6))],
-          [Number(lng1.toFixed(6)), Number(lat0.toFixed(6))],
-          [Number(lng1.toFixed(6)), Number(lat1.toFixed(6))],
-          [Number(lng0.toFixed(6)), Number(lat1.toFixed(6))],
-        ],
-      });
+/**
+ * Keep the part of `poly` nearer to `a` than to `b` (one Sutherland–Hodgman
+ * pass against their perpendicular bisector). Works in scaled coordinates.
+ */
+function clipNearer(poly: LngLat[], a: LngLat, b: LngLat): LngLat[] {
+  const nx = (b[0] - a[0]) * LNG_SCALE * LNG_SCALE;
+  const ny = b[1] - a[1];
+  const mx = (a[0] + b[0]) / 2;
+  const my = (a[1] + b[1]) / 2;
+  const side = (p: LngLat) => (p[0] - mx) * nx + (p[1] - my) * ny; // <= 0: nearer a
+  const out: LngLat[] = [];
+  for (let i = 0; i < poly.length; i++) {
+    const p = poly[i]!;
+    const q = poly[(i + 1) % poly.length]!;
+    const sp = side(p);
+    const sq = side(q);
+    if (sp <= 0) out.push(p);
+    if ((sp <= 0) !== (sq <= 0)) {
+      const t = sp / (sp - sq);
+      out.push([p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]);
     }
   }
+  return out;
+}
 
-  // Greedy nearest assignment: each locality claims the free tile closest to
-  // its real position. Deterministic because LOCALITIES is a fixed order.
-  const taken = new Set<number>();
-  return LOCALITIES.map((loc) => {
-    let best = -1;
-    let bestD = Number.POSITIVE_INFINITY;
-    tiles.forEach((t, i) => {
-      if (taken.has(i)) return;
-      const d = (t.centre[0] - loc.at[0]) ** 2 + (t.centre[1] - loc.at[1]) ** 2;
-      if (d < bestD) {
-        bestD = d;
-        best = i;
-      }
-    });
-    taken.add(best);
-    const tile = tiles[best]!;
-    return {
-      code: loc.code,
-      name: loc.name,
-      centroid: tile.centre,
-      populationIx: loc.populationIx,
-      boundary: tile.boundary,
-    };
-  });
-})();
+/**
+ * Zones are the areas nearest each locality (a Voronoi partition), clipped to
+ * the city. They still tile the map exactly once, as the old grid did, but each
+ * zone's centre is now the real place and its edges fall halfway to its real
+ * neighbours, instead of the name being dropped onto whichever grid square was
+ * closest.
+ */
+export const ZONES: ZoneSeed[] = LOCALITIES.map((loc) => {
+  let cell: LngLat[] = [
+    [CITY_BBOX.minLng, CITY_BBOX.minLat],
+    [CITY_BBOX.maxLng, CITY_BBOX.minLat],
+    [CITY_BBOX.maxLng, CITY_BBOX.maxLat],
+    [CITY_BBOX.minLng, CITY_BBOX.maxLat],
+  ];
+  for (const other of LOCALITIES) {
+    if (other !== loc) cell = clipNearer(cell, loc.at, other.at);
+  }
+  return {
+    code: loc.code,
+    name: loc.name,
+    centroid: loc.at,
+    populationIx: loc.populationIx,
+    boundary: cell.map(([x, y]) => [Number(x.toFixed(6)), Number(y.toFixed(6))] as LngLat),
+  };
+});
+
+/** Ray-casting point-in-polygon, for keeping seeded points inside their own zone. */
+export function insidePolygon(p: LngLat, ring: LngLat[]): boolean {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i]!;
+    const [xj, yj] = ring[j]!;
+    if (yi > p[1] !== yj > p[1] && p[0] < ((xj - xi) * (p[1] - yi)) / (yj - yi) + xi) {
+      inside = !inside;
+    }
+  }
+  return inside;
+}
 
 export function zoneBoundary(_centroid: LngLat): LngLat[] {
   // Kept for the seeder's call signature; boundaries are now precomputed above.
@@ -362,11 +383,22 @@ export function buildSegments(): SegmentSeed[] {
   return segments;
 }
 
-/** Deterministic point inside a zone tile, indexed so repeat runs match. */
+/** How far from its zone's centre a seeded vehicle or trip end may be placed: about 600 m. */
+const SCATTER_DEG = 0.0055;
+
+/**
+ * Deterministic point near a zone's centre and inside that zone, indexed so
+ * repeat runs match. Zones are now irregular, so a point that lands over the
+ * border is pulled halfway back towards the centre until it is inside.
+ */
 export function pointInZone(centroid: LngLat, index: number): LngLat {
-  const halfW = CITY_W / ZONE_COLS / 2;
-  const halfH = CITY_H / ZONE_ROWS / 2;
-  const jLng = (hash2(index, 4211) - 0.5) * halfW * 1.6;
-  const jLat = (hash2(4211, index) - 0.5) * halfH * 1.6;
-  return [Number((centroid[0] + jLng).toFixed(6)), Number((centroid[1] + jLat).toFixed(6))];
+  const zone = ZONES.find((z) => z.centroid[0] === centroid[0] && z.centroid[1] === centroid[1]);
+  let scale = 1;
+  for (let attempt = 0; attempt < 6; attempt++, scale /= 2) {
+    const jLng = ((hash2(index, 4211) - 0.5) * 2 * SCATTER_DEG * scale) / LNG_SCALE;
+    const jLat = (hash2(4211, index) - 0.5) * 2 * SCATTER_DEG * scale;
+    const p: LngLat = [Number((centroid[0] + jLng).toFixed(6)), Number((centroid[1] + jLat).toFixed(6))];
+    if (!zone || insidePolygon(p, zone.boundary)) return p;
+  }
+  return centroid;
 }

@@ -160,6 +160,7 @@ describe('AdminScreen', () => {
 
     wrap(<AdminScreen />);
     expect(await screen.findByText('No rollups yet')).toBeDefined();
-    expect(screen.getByText(/npm run rollup/)).toBeDefined();
+    // An admin is offered the fix itself, not a terminal command.
+    expect(screen.getByRole('button', { name: 'Build now' })).toBeDefined();
   });
 });

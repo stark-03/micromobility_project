@@ -1,5 +1,5 @@
 import { EventEmitter } from 'node:events';
-import type { VehicleStatus } from '@mm/shared-types';
+import type { LngLat, VehicleStatus } from '@mm/shared-types';
 
 /**
  * In-process event bus.
@@ -18,8 +18,17 @@ export interface BusEvents {
   'weather:update': { zoneId: string; at: string };
   'vehicle:status': {
     vehicleId: string;
+    operatorId: string;
     from: VehicleStatus;
     to: VehicleStatus;
+    at: string;
+  };
+  /** A rider's vehicle moved. Carries no rider: staff see vehicles, not people. */
+  'vehicle:position': {
+    vehicleId: string;
+    operatorId: string;
+    position: LngLat;
+    batteryPct: number | null;
     at: string;
   };
   /** M06. Published from a worker thread — see jobs/progress.ts. */

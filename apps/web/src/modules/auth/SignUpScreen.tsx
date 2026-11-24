@@ -3,6 +3,7 @@ import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { Alert, Box, Button, Link, Paper, TextField, Typography } from '@mui/material';
 import type { AuthResponseDto } from '@mm/shared-types';
+import { homeFor } from '../../lib/access.ts';
 import { api } from '../../lib/api.ts';
 import type { ApiClientError } from '../../lib/api.ts';
 import { useAuthStore } from '../../lib/auth-store.ts';
@@ -58,7 +59,7 @@ export function SignUpScreen() {
       // so a new rider lands signed in rather than being bounced to a login
       // form to retype what they just typed.
       setSession(res.data.accessToken, res.data.user);
-      navigate('/live', { replace: true });
+      navigate(homeFor(res.data.user.roles), { replace: true });
     },
   });
 

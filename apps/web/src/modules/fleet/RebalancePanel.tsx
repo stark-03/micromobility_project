@@ -11,6 +11,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
+import { useCan } from '../../lib/access.ts';
 import { api } from '../../lib/api.ts';
 import { EmptyState, ErrorState, LoadingState } from '../../components/StateViews.tsx';
 
@@ -86,6 +87,8 @@ function GapBar({ gap, scale }: { gap: number; scale: number }) {
 }
 
 export function RebalancePanel() {
+  // Analysts can read plans; only those who act on the fleet may change them.
+  const canAct = useCan('rebalance');
   const queryClient = useQueryClient();
   const [vanCount, setVanCount] = useState(2);
   const [vanCapacity, setVanCapacity] = useState(8);
@@ -254,7 +257,7 @@ export function RebalancePanel() {
           <Button
             variant="contained"
             onClick={() => createPlan.mutate()}
-            disabled={createPlan.isPending}
+            disabled={createPlan.isPending || !canAct}
           >
             {createPlan.isPending ? 'Solving…' : 'Solve rebalancing'}
           </Button>
@@ -324,7 +327,7 @@ export function RebalancePanel() {
                         {t.vehicles} vehicle{t.vehicles === 1 ? '' : 's'} · {t.distanceKm.toFixed(1)} km
                       </Typography>
                     </Box>
-                    {t.status === 'pending' ? (
+                    {t.status === 'pending' && canAct ? (
                       <Box className="flex shrink-0 gap-1">
                         <Button size="small" onClick={() => setTask.mutate({ id: t.id, status: 'done' })}>
                           Done

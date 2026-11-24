@@ -6,6 +6,7 @@ import { validate } from '../../middleware/validate.ts';
 import {
   deleteApiKey,
   getApiKeys,
+  getOperators,
   getUsers,
   patchUserRoles,
   postApiKey,
@@ -29,6 +30,8 @@ adminRoutes.patch(
   validate({ params: idParamSchema, body: setRolesSchema }),
   asyncHandler(patchUserRoles),
 );
+
+adminRoutes.get('/operators', asyncHandler(getOperators));
 
 adminRoutes.get('/api-keys', asyncHandler(getApiKeys));
 adminRoutes.post('/api-keys', validate({ body: createApiKeySchema }), asyncHandler(postApiKey));

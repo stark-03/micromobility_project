@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   Box,
   Button,
+  ButtonBase,
   Dialog,
   DialogActions,
   DialogContent,
@@ -17,8 +18,17 @@ import {
 import { DataGrid } from '@mui/x-data-grid';
 import type { GridColDef } from '@mui/x-data-grid';
 import { VEHICLE_STATUSES, VEHICLE_TYPES } from '@mm/shared-types';
-import type { VehicleDto, VehicleStatus, VehicleType } from '@mm/shared-types';
+import type {
+  FleetSummaryDto,
+  VehicleActiveRentalDto,
+  VehicleDto,
+  VehicleStatus,
+  VehicleType,
+} from '@mm/shared-types';
+import { useCan } from '../../lib/access.ts';
 import { api, qs } from '../../lib/api.ts';
+import { formatDistance } from '../../lib/money.ts';
+import { useRealtimeStatus } from '../../lib/use-realtime.ts';
 import type { ApiClientError, Envelope } from '../../lib/api.ts';
 import { queryKeys } from '../../lib/query-keys.ts';
 import { EmptyState, ErrorState, LoadingState } from '../../components/StateViews.tsx';
@@ -26,7 +36,29 @@ import { VehicleQr } from '../../components/VehicleQr.tsx';
 import { BatteryCell, ModeDot, RelativeTime, StatusChip } from './cells.tsx';
 import { RebalancePanel } from './RebalancePanel.tsx';
 
-function buildColumns(onQr: (v: VehicleDto) => void): GridColDef<VehicleDto>[] {
+/**
+ * Who is on this vehicle and for how long. The name only comes back for roles
+ * allowed to see it (ACCESS.riderIdentity); others see that it is rented.
+ */
+function RiderCell({ rental }: { rental: VehicleActiveRentalDto | null }) {
+  if (!rental) return <>—</>;
+  const minutes = Math.max(
+    0,
+    Math.round((Date.now() - new Date(rental.startedAt).getTime()) / 60_000),
+  );
+  return (
+    <Box className="flex h-full flex-col justify-center leading-tight">
+      <Typography variant="body2" className="truncate">
+        {rental.riderName ?? 'Rented'}
+      </Typography>
+      <Typography variant="caption" color="text.secondary" className="mono">
+        {minutes} min · {formatDistance(rental.distanceM)}
+      </Typography>
+    </Box>
+  );
+}
+
+function buildColumns(onQr: ((v: VehicleDto) => void) | null): GridColDef<VehicleDto>[] {
   return [
     {
       field: 'externalRef',
@@ -60,6 +92,13 @@ function buildColumns(onQr: (v: VehicleDto) => void): GridColDef<VehicleDto>[] {
       renderCell: (p) => <BatteryCell pct={p.row.batteryPct} />,
     },
     {
+      field: 'activeRental',
+      headerName: 'Rider',
+      width: 170,
+      sortable: false,
+      renderCell: (p) => <RiderCell rental={p.row.activeRental} />,
+    },
+    {
       field: 'stationName',
       headerName: 'Station',
       width: 170,
@@ -71,20 +110,24 @@ function buildColumns(onQr: (v: VehicleDto) => void): GridColDef<VehicleDto>[] {
       width: 130,
       renderCell: (p) => <RelativeTime iso={p.row.lastSeenAt} />,
     },
-    {
-      field: 'unlockCode',
-      headerName: 'QR',
-      width: 130,
-      sortable: false,
-      renderCell: (p) =>
-        p.row.unlockCode ? (
-          <Button size="small" variant="text" className="mono" onClick={() => onQr(p.row)}>
-            {p.row.unlockCode}
-          </Button>
-        ) : (
-          '—'
-        ),
-    },
+    ...(onQr
+      ? ([
+          {
+            field: 'unlockCode',
+            headerName: 'QR',
+            width: 130,
+            sortable: false,
+            renderCell: (p) =>
+              p.row.unlockCode ? (
+                <Button size="small" variant="text" className="mono" onClick={() => onQr(p.row)}>
+                  {p.row.unlockCode}
+                </Button>
+              ) : (
+                '—'
+              ),
+          },
+        ] as GridColDef<VehicleDto>[])
+      : []),
   ];
 }
 
@@ -135,10 +178,79 @@ function QrDialog({ vehicle, onClose }: { vehicle: VehicleDto | null; onClose: (
 
 type TabKey = 'vehicles' | 'rebalance';
 
+const FALLBACK_REFRESH_MS = 30_000;
+
+const STRIP: Array<{ status: VehicleStatus; label: string }> = [
+  { status: 'in_use', label: 'In use' },
+  { status: 'available', label: 'Available' },
+  { status: 'reserved', label: 'Reserved' },
+  { status: 'returning', label: 'Returning' },
+  { status: 'charging', label: 'Charging' },
+  { status: 'maintenance', label: 'Maintenance' },
+];
+
+/** The whole fleet at a glance, updated live. Pressing a count filters the list to it. */
+function FleetStrip({
+  summary,
+  selected,
+  onSelect,
+}: {
+  summary: FleetSummaryDto;
+  selected: VehicleStatus | '';
+  onSelect: (status: VehicleStatus) => void;
+}) {
+  const connected = useRealtimeStatus((s) => s.connected);
+  return (
+    <Box className="flex flex-col gap-2">
+      <Box className="flex items-center gap-2">
+        <Box
+          className="h-2 w-2 rounded-full"
+          sx={{ background: connected ? 'var(--ok)' : 'var(--mist-400)' }}
+          aria-hidden
+        />
+        <Typography variant="caption" color="text.secondary">
+          {connected
+            ? 'Live: updates the moment a vehicle changes'
+            : 'Reconnecting: refreshing every 30 s'}
+        </Typography>
+      </Box>
+      <Box className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+        {STRIP.map(({ status, label }) => (
+          <ButtonBase
+            key={status}
+            onClick={() => onSelect(status)}
+            aria-pressed={selected === status}
+            className="flex flex-col items-start rounded-md border p-3 text-left"
+            sx={{
+              border: '1px solid',
+              borderColor: selected === status ? 'var(--series-1)' : 'var(--ink-700)',
+              background: 'var(--ink-900)',
+            }}
+          >
+            <Typography variant="overline" color="text.secondary" className="leading-none">
+              {label}
+            </Typography>
+            <Typography variant="h3" className="mono" sx={{ fontSize: 24 }}>
+              {summary.byStatus[status]}
+            </Typography>
+            {status === 'in_use' && (
+              <Typography variant="caption" color="text.secondary">
+                {summary.activeRentals} on rentals now
+              </Typography>
+            )}
+          </ButtonBase>
+        ))}
+      </Box>
+    </Box>
+  );
+}
+
 export function FleetScreen() {
   const [tab, setTab] = useState<TabKey>('vehicles');
   const [qrFor, setQrFor] = useState<VehicleDto | null>(null);
-  const columns = useMemo(() => buildColumns(setQrFor), []);
+  // Unlock codes are for the people who stick them on vehicles.
+  const canManage = useCan('fleetManage');
+  const columns = useMemo(() => buildColumns(canManage ? setQrFor : null), [canManage]);
   const [page, setPage] = useState(0);
   const [limit, setLimit] = useState(20);
   const [status, setStatus] = useState<VehicleStatus | ''>('');
@@ -155,6 +267,14 @@ export function FleetScreen() {
     // Keeps the previous page on screen while the next one loads, so the grid
     // does not collapse to a spinner on every page change.
     placeholderData: (prev: Envelope<VehicleDto[]> | undefined) => prev,
+    // Sockets push changes the moment they happen; this covers a dropped one.
+    refetchInterval: FALLBACK_REFRESH_MS,
+  });
+
+  const summary = useQuery({
+    queryKey: queryKeys.vehicles.summary,
+    queryFn: () => api.get<FleetSummaryDto>('/vehicles/summary'),
+    refetchInterval: FALLBACK_REFRESH_MS,
   });
 
   const filtersActive = status !== '' || type !== '';
@@ -187,6 +307,16 @@ export function FleetScreen() {
         <RebalancePanel />
       ) : (
         <>
+          {summary.data && (
+            <FleetStrip
+              summary={summary.data.data}
+              selected={status}
+              onSelect={(next) => {
+                setStatus(next === status ? '' : next);
+                setPage(0);
+              }}
+            />
+          )}
           <Box className="flex flex-wrap items-end justify-end gap-4">
             <Box className="flex flex-wrap gap-3">
               <TextField

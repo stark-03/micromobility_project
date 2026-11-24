@@ -4,6 +4,7 @@ import 'leaflet/dist/leaflet.css';
 import { Box, Typography } from '@mui/material';
 import type { LngLat, RouteDto } from '@mm/shared-types';
 import { token } from '../../lib/tokens.ts';
+import { MapSourceFrame } from '../../components/MapSource.tsx';
 
 const BELAGAVI: [number, number] = [15.8497, 74.4977]; // Leaflet is [lat, lng]
 
@@ -232,7 +233,7 @@ export function RouteMap({
   }, [vehicles, stations]);
 
   return (
-    <Box className="relative h-full w-full">
+    <MapSourceFrame map={map} focus={pickup} focusLabel="your pickup">
       <div ref={container} className="absolute inset-0" data-testid="route-map" />
 
       {!pickup && (
@@ -258,6 +259,6 @@ export function RouteMap({
           </Typography>
         </Box>
       )}
-    </Box>
+    </MapSourceFrame>
   );
 }
