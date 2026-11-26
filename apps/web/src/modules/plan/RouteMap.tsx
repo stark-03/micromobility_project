@@ -233,7 +233,20 @@ export function RouteMap({
   }, [vehicles, stations]);
 
   return (
-    <MapSourceFrame map={map} focus={pickup} focusLabel="your pickup">
+    <MapSourceFrame
+      map={map}
+      focus={pickup}
+      focusLabel="your pickup"
+      trip={
+        pickup && drop
+          ? {
+              from: pickup,
+              to: drop,
+              ourDistanceM: routes.find((r) => r.profile === selectedProfile)?.distanceM ?? null,
+            }
+          : null
+      }
+    >
       <div ref={container} className="absolute inset-0" data-testid="route-map" />
 
       {!pickup && (

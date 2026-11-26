@@ -50,6 +50,21 @@ export function googleEmbedUrl(center: LngLat, zoom: number, pin: boolean): stri
     : `https://maps.google.com/maps?ll=${at}&z=${z}&hl=en&output=embed`;
 }
 
+const ll = (p: LngLat) => `${p[1].toFixed(6)},${p[0].toFixed(6)}`;
+
+/**
+ * Google's own route between two points, in its keyless embed. Google draws
+ * the line and its distance and time, which a reviewer can set beside ours.
+ */
+export function googleDirectionsEmbedUrl(from: LngLat, to: LngLat): string {
+  return `https://maps.google.com/maps?saddr=${ll(from)}&daddr=${ll(to)}&hl=en&output=embed`;
+}
+
+/** The same trip in the Google Maps website or app (documented, keyless Maps URL). */
+export function googleDirectionsLink(from: LngLat, to: LngLat): string {
+  return `https://www.google.com/maps/dir/?api=1&origin=${ll(from)}&destination=${ll(to)}&travelmode=two-wheeler`;
+}
+
 /** The same spot in the Google Maps website or app. Google's documented, keyless Maps URL. */
 export function googleMapsLink(point: LngLat): string {
   return `https://www.google.com/maps/search/?api=1&query=${point[1].toFixed(6)},${point[0].toFixed(6)}`;
@@ -69,6 +84,7 @@ export function MapSourceFrame({
   map,
   focus,
   focusLabel,
+  trip,
   children,
 }: {
   /** The Leaflet map, read when switching to Google to centre it on the same view. */
@@ -76,6 +92,11 @@ export function MapSourceFrame({
   /** The point that matters on this screen (a pickup, a selected station), if any. */
   focus?: LngLat | null;
   focusLabel?: string;
+  /**
+   * A trip the screen shows a route for. Google then draws ITS route between
+   * the same two points, with its distance, so the two can be compared.
+   */
+  trip?: { from: LngLat; to: LngLat; ourDistanceM?: number | null } | null;
   children: React.ReactNode;
 }) {
   const { source, setSource } = useMapSource();
@@ -107,27 +128,46 @@ export function MapSourceFrame({
       {google && center && shown && (
         <Box className="absolute inset-0 z-[1100] flex flex-col bg-ink-950">
           <iframe
-            key={`${center[0]},${center[1]},${shown.zoom},${Boolean(focus)}`}
+            key={
+              trip
+                ? `trip:${ll(trip.from)}:${ll(trip.to)}`
+                : `${center[0]},${center[1]},${shown.zoom},${Boolean(focus)}`
+            }
             title="Google Maps"
-            src={googleEmbedUrl(
-              center,
-              focus ? Math.max(shown.zoom, 16) : shown.zoom,
-              Boolean(focus),
-            )}
+            src={
+              trip
+                ? googleDirectionsEmbedUrl(trip.from, trip.to)
+                : googleEmbedUrl(
+                    center,
+                    focus ? Math.max(shown.zoom, 16) : shown.zoom,
+                    Boolean(focus),
+                  )
+            }
             className="w-full flex-1 border-0"
             loading="lazy"
             referrerPolicy="no-referrer-when-downgrade"
           />
           <Box className="flex flex-wrap items-center gap-2 border-t border-ink-700 bg-ink-900 px-3 py-2">
             <Typography variant="caption" color="text.secondary" className="min-w-0 flex-1">
-              Google's map, for checking positions
-              {focus ? ` — pinned at ${focusLabel ?? 'your selected point'}` : ''}. Routes, stations
-              and vehicles appear on the free map.
+              {trip ? (
+                <>
+                  Google's own route between your two points, with Google's distance on the map
+                  {trip.ourDistanceM
+                    ? `. Ours is ${(trip.ourDistanceM / 1000).toFixed(2)} km on the free map.`
+                    : '.'}
+                </>
+              ) : (
+                <>
+                  Google's map, for checking positions
+                  {focus ? ` — pinned at ${focusLabel ?? 'your selected point'}` : ''}. Routes,
+                  stations and vehicles appear on the free map.
+                </>
+              )}
             </Typography>
             <Button
               size="small"
               variant="outlined"
-              href={googleMapsLink(center)}
+              href={trip ? googleDirectionsLink(trip.from, trip.to) : googleMapsLink(center)}
               target="_blank"
               rel="noopener noreferrer"
             >

@@ -13,10 +13,11 @@ import path from 'node:path';
 
 const root = path.resolve(import.meta.dirname, '..');
 
-/** Both documents render the same way; `npm run guide:pdf -- manual` picks one. */
+/** All documents render the same way; `npm run guide:pdf -- setup` picks one. */
 const DOCS = {
   viva: { src: 'docs/viva-run-of-show.html', out: 'Viva-Run-of-Show.pdf' },
   manual: { src: 'docs/user-manual.html', out: 'User-Manual.pdf' },
+  setup: { src: 'docs/setup-guide.html', out: 'Setup-Guide.pdf' },
 };
 
 const which = process.argv[2];

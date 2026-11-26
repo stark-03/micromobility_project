@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { assertConnected } from '../src/db/seeders/graph.ts';
+import { repairDroppedLinks } from '../src/db/seeders/osm-repair.ts';
 import { CITY_BBOX } from '../src/db/seeders/belagavi-geo.ts';
 import type { RoadClass } from '@mm/shared-types';
 
@@ -18,6 +19,7 @@ import type { RoadClass } from '@mm/shared-types';
  *
  *   npm run osm:import            # use the cached fixture
  *   npm run osm:import -- --fetch # re-fetch from Overpass, then cache
+ *   npm run osm:import -- --repair # restore links the pre-2026-11 import dropped
  */
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -167,10 +169,11 @@ function buildSegments(ways: OsmWay[]): OsmSegment[] {
 
       let lengthM = 0;
       for (let k = 1; k < coords.length; k++) lengthM += haversineM(coords[k - 1]!, coords[k]!);
-      if (lengthM < 5) {
-        cut = i;
-        continue;
-      }
+      // Every piece is kept, however short. The first version dropped pieces
+      // under 5 m, but between two junctions that short piece IS the link:
+      // dropping it cut streets apart, and a 2 km trip routed 8.6 km around
+      // the gap. A floor on the length keeps the cost arithmetic sane.
+      lengthM = Math.max(lengthM, 0.5);
 
       segments.push({
         externalRef: `OSM-${w.id}-${cut}`,
@@ -227,6 +230,20 @@ function largestComponent(segments: OsmSegment[]): OsmSegment[] {
 }
 
 async function main(): Promise<void> {
+  if (process.argv.includes('--repair')) {
+    const fixture = JSON.parse(await fs.readFile(FIXTURE, 'utf8')) as {
+      source: string;
+      bbox: unknown;
+      segments: OsmSegment[];
+    };
+    const before = fixture.segments.filter((s) => !s.externalRef.includes('BRIDGE')).length;
+    const repaired = repairDroppedLinks(fixture.segments);
+    assertConnected(repaired.map((s) => [s.fromNode, s.toNode] as [string, string]));
+    await fs.writeFile(FIXTURE, JSON.stringify({ ...fixture, segments: repaired }));
+    console.log(`restored ${repaired.length - before} dropped links (${before} road pieces)`);
+    return;
+  }
+
   const shouldFetch = process.argv.includes('--fetch');
 
   const rawPath = path.join(here, '../../../.osm-raw.json');
