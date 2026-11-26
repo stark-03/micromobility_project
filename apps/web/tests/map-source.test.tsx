@@ -5,6 +5,7 @@ import { ThemeProvider } from '@mui/material';
 import type L from 'leaflet';
 import { createAppTheme } from '../src/app/theme.ts';
 import {
+  googleDirectionsLink,
   googleEmbedUrl,
   googleMapsLink,
   MapSourceFrame,
@@ -67,6 +68,19 @@ describe('switching between the free map and Google', () => {
     expect(screen.getByText('free map contents')).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: 'Free map' }));
     expect(screen.queryByTitle('Google Maps')).toBeNull();
+  });
+
+  it('draws Google’s own route for a trip, beside our distance', () => {
+    const from: [number, number] = [74.4988, 15.8451];
+    const to: [number, number] = [74.5241, 15.8265];
+    frame({ focus: from, trip: { from, to, ourDistanceM: 2300 } });
+    fireEvent.click(screen.getByRole('button', { name: 'Google' }));
+    const iframe = screen.getByTitle('Google Maps') as HTMLIFrameElement;
+    expect(iframe.src).toContain('saddr=15.845100,74.498800');
+    expect(iframe.src).toContain('daddr=15.826500,74.524100');
+    expect(screen.getByText(/Ours is 2\.30 km on the free map/)).toBeDefined();
+    const link = screen.getByRole('link', { name: 'Open in Google Maps' });
+    expect(link.getAttribute('href')).toBe(googleDirectionsLink(from, to));
   });
 
   it('remembers the choice across screens', () => {

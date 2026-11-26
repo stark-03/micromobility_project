@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Setup Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Same palette as the user manual and viva guide. */
+:root {
+  --ground: #f4f7fb; --surface: #ffffff; --raised: #eaf0f8;
+  --line: #d3dded; --line-soft: #e4ebf5;
+  --text: #0d1424; --muted: #55668a;
+  --accent: #2c6fd6; --accent-dim: #dce8fb;
+  --gold: #8a5f0f; --gold-dim: #f7eeda;
+  --ok: #17805a; --ok-dim: #dcf2e8;
+  --danger: #c0272c; --danger-dim: #fbe3e4;
+  --font-display: 'Archivo', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+}
+@page { size: A4; margin: 15mm 14mm 16mm; }
+* { box-sizing: border-box; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body { margin: 0; background: var(--surface); color: var(--text); font: 10pt/1.5 var(--font-body); }
+main { max-width: 182mm; margin: 0 auto; padding: 0 16px; }
+h1, h2, h3 { font-family: var(--font-display); line-height: 1.2; margin: 0; }
+h1 { font-size: 24pt; letter-spacing: -.01em; }
+h2 { font-size: 14.5pt; margin: 22px 0 8px; padding-bottom: 5px; border-bottom: 2px solid var(--line); break-after: avoid; }
+h3 { font-size: 11pt; margin: 14px 0 6px; break-after: avoid; }
+p { margin: 0 0 8px; }
+ul, ol { margin: 0 0 8px; padding-left: 20px; }
+li { margin-bottom: 4px; }
+code { font: 8.7pt var(--font-mono); background: var(--raised); padding: 1px 4px; border-radius: 4px; }
+pre { font: 8.6pt/1.5 var(--font-mono); background: #0f1830; color: #e6edf8; padding: 9px 11px; border-radius: 8px; margin: 4px 0 10px; white-space: pre-wrap; word-break: break-word; break-inside: avoid; }
+pre .c { color: #8fa3c7; }
+.cover { padding: 4px 0 12px; border-bottom: 1px solid var(--line); margin-bottom: 12px; }
+.kicker { font: 600 8.5pt var(--font-body); text-transform: uppercase; letter-spacing: .1em; color: var(--accent); margin-bottom: 6px; }
+.sub { color: var(--muted); font-size: 10.5pt; margin-top: 6px; }
+.meta { color: var(--muted); font-size: 8.5pt; margin-top: 8px; }
+table { width: 100%; border-collapse: collapse; margin: 6px 0 10px; font-size: 9pt; }
+th { text-align: left; font-weight: 600; background: var(--raised); padding: 6px 8px; border-bottom: 1px solid var(--line); }
+td { padding: 6px 8px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+tr { break-inside: avoid; }
+.note, .warn, .tip { border-radius: 0 9px 9px 0; padding: 8px 12px; margin: 8px 0 10px; font-size: 9.3pt; break-inside: avoid; }
+.note { background: var(--ground); border-left: 3px solid var(--accent); }
+.warn { background: var(--danger-dim); border-left: 3px solid var(--danger); }
+.tip { background: var(--ok-dim); border-left: 3px solid var(--ok); }
+.steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 10px 0; }
+.step { background: var(--ground); border: 1px solid var(--line-soft); border-radius: 9px; padding: 9px 11px; break-inside: avoid; }
+.step b { display: block; font: 700 9.5pt var(--font-display); margin-bottom: 3px; }
+.step span { color: var(--muted); font-size: 8.8pt; }
+.os { display: inline-block; font: 600 7.5pt var(--font-body); text-transform: uppercase; letter-spacing: .06em; padding: 1px 6px; border-radius: 99px; background: var(--accent-dim); color: var(--accent); vertical-align: 1px; }
+.break { break-before: page; }
+.foot { color: var(--muted); font-size: 8pt; border-top: 1px solid var(--line); padding-top: 8px; margin-top: 18px; }
+@media (max-width: 640px) { .steps { grid-template-columns: 1fr; } table { display: block; overflow-x: auto; } }
+</style>
+</head>
+<body>
+<main>
+
+<section class="cover">
+  <div class="kicker">AI Urban Micro Mobility Simulator</div>
+  <h1>How to set up and run the project</h1>
+  <p class="sub">From a fresh Windows computer to the app running in the browser. Linux and macOS
+  differences are marked where they matter.</p>
+  <p class="meta">Written 24 November 2026 for the <code>main</code> branch at commit <code>363084e</code>
+  · Repository: <code>github.com/stark-03/micromobility_project</code></p>
+</section>
+
+<h2>1. What you are running</h2>
+<p>The project is four programs that run together. All four must be running for the app to work fully.</p>
+<table>
+  <thead><tr><th style="width:22%">Program</th><th style="width:14%">Address</th><th>What it does</th></tr></thead>
+  <tbody>
+    <tr><td><b>MySQL 8.4</b></td><td>port 3306*</td><td>The database: users, vehicles, trips, stations, the road network.</td></tr>
+    <tr><td><b>API</b> (Node.js)</td><td>localhost:4000</td><td>The server the app talks to. Logins, rentals, roles, live updates.</td></tr>
+    <tr><td><b>ML service</b> (Python)</td><td>localhost:8000</td><td>Route planning, demand forecasts and the city simulation.</td></tr>
+    <tr><td><b>Web app</b> (React)</td><td>localhost:5173</td><td>What you open in the browser.</td></tr>
+  </tbody>
+</table>
+<p class="meta">* Whatever port you chose when installing MySQL. Section 4 shows how to find it.</p>
+
+<div class="steps">
+  <div class="step"><b>Once per computer</b><span>Sections 2–7: install tools, get the code, create the database, load data.</span></div>
+  <div class="step"><b>Every time</b><span>Section 8: start the three programs in three terminals.</span></div>
+  <div class="step"><b>After a git pull</b><span>Section 10: four commands to bring a copy up to date.</span></div>
+</div>
+
+<h2>2. Install these first</h2>
+<table>
+  <thead><tr><th style="width:24%">Tool</th><th style="width:18%">Version</th><th>Where, and what to watch for</th></tr></thead>
+  <tbody>
+    <tr><td><b>Git</b></td><td>any recent</td><td>git-scm.com</td></tr>
+    <tr><td><b>Node.js</b></td><td><b>22.18 or newer</b></td><td>nodejs.org, the LTS installer. Check with <code>node -v</code>. Older versions cannot run the API's TypeScript directly.</td></tr>
+    <tr><td><b>MySQL Community Server</b></td><td><b>8.4 LTS</b></td><td>dev.mysql.com/downloads/mysql. Also install <b>MySQL Workbench</b> to manage it.</td></tr>
+    <tr><td><b>Miniconda</b></td><td>any</td><td>docs.conda.io/miniconda. Used for the Python ML service.</td></tr>
+    <tr><td><b>Chrome or Edge</b></td><td>any recent</td><td>To use the app.</td></tr>
+  </tbody>
+</table>
+<div class="warn"><b>Do not use XAMPP's database.</b> XAMPP ships MariaDB, not MySQL. The project's map
+data uses MySQL 8 features MariaDB does not have, so migrations fail and <code>micromobility.sql</code>
+will not import. If XAMPP is installed, either stop its MySQL or give MySQL 8.4 a different port
+(for example 3307) during installation.</div>
+
+<h2>3. Get the code</h2>
+<pre>git clone https://github.com/stark-03/micromobility_project.git
+cd micromobility_project
+npm install
+npm run build -w @mm/shared-types</pre>
+<p>The last command builds the shared rules package (including who can open which screen).
+<b>The API will not start without it</b>, so run it again whenever you pull new code.</p>
+
+<h2>4. Create the database</h2>
+<h3>Find MySQL's port</h3>
+<p>In Command Prompt:</p>
+<pre>netstat -ano | findstr LISTENING | findstr :330</pre>
+<p>A line like <code>0.0.0.0:3305 … LISTENING</code> means MySQL is on port <b>3305</b>. Ignore 33060 (a
+different MySQL protocol). If nothing appears, open <code>services.msc</code> and start the
+<b>MySQL84</b> service.</p>
+
+<h3>Create the databases and the app's user</h3>
+<p>Open MySQL Workbench. On its home screen click <b>+</b> next to <i>MySQL Connections</i>; set Hostname
+<code>127.0.0.1</code>, the Port you just found, Username <code>root</code>; click <b>Test Connection</b> and
+enter the root password you chose while installing. Open the connection and run:</p>
+<pre>CREATE DATABASE micromobility      CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+CREATE DATABASE micromobility_test CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+
+CREATE USER 'mm_app'@'localhost' IDENTIFIED BY 'change_me';
+GRANT ALL PRIVILEGES ON micromobility.*      TO 'mm_app'@'localhost';
+GRANT ALL PRIVILEGES ON micromobility_test.* TO 'mm_app'@'localhost';
+FLUSH PRIVILEGES;</pre>
+<div class="note">Workbench says <b>offline</b>? It is only a viewer; the database is the MySQL84 service.
+"Offline" almost always means the connection's port is wrong. Edit the connection and use the port
+from <code>netstat</code>.</div>
+
+<h2>5. Create the settings file (.env)</h2>
+<p>In the project folder, copy the template:</p>
+<pre><span class="c">Windows:</span>      copy .env.example .env
+<span class="c">Linux/macOS:</span>  cp .env.example .env</pre>
+<p>Open <code>.env</code> in a text editor and change these lines:</p>
+<pre>DB_HOST=127.0.0.1
+DB_PORT=3306                 <span class="c"># the port from section 4</span>
+DB_USER=mm_app
+DB_PASSWORD=change_me        <span class="c"># what you set in CREATE USER</span>
+DB_NAME=micromobility
+DB_NAME_TEST=micromobility_test
+
+JWT_ACCESS_SECRET=           <span class="c"># paste a generated secret</span>
+JWT_REFRESH_SECRET=          <span class="c"># paste a DIFFERENT generated secret</span></pre>
+<p>Generate each secret with this command (run it twice, one value per line):</p>
+<pre>node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"</pre>
+<div class="warn"><code>.env</code> holds passwords and secrets. It is ignored by git: never commit it, never
+paste it into chat or screenshots.</div>
+
+<h2>6. Load the data</h2>
+<p>Choose <b>one</b> option. Run all commands from the project's root folder.</p>
+
+<h3>Option A — import the shared database dump (recommended for a demo)</h3>
+<p><code>micromobility.sql</code> is <b>not in the repository</b> (it contains user accounts and password
+hashes). Get it from a teammate by USB or Drive. Then, in <b>Command Prompt</b> (not PowerShell):</p>
+<pre>"C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe" -h 127.0.0.1 -P 3306 -u root -p micromobility &lt; micromobility.sql</pre>
+<p>Use your port after <code>-P</code>. It prints nothing for a minute while it works. Then bring the
+imported data up to date:</p>
+<pre>npm run db:migrate
+npm run db:seed
+npm run demand:backfill
+npm run rollup</pre>
+<p>The demo accounts in Section 9 work with this option.</p>
+
+<h3>Option B — start from an empty database</h3>
+<pre>npm run db:migrate
+npm run db:seed              <span class="c"># prints the demo passwords ONCE: copy them now</span>
+npm run demand:backfill
+npm run rollup</pre>
+<table>
+  <thead><tr><th style="width:28%">Command</th><th>What it does</th></tr></thead>
+  <tbody>
+    <tr><td><code>db:migrate</code></td><td>Creates and updates all tables. Safe to run any time.</td></tr>
+    <tr><td><code>db:seed</code></td><td>Loads the Belagavi city: roads, zones, stations, vehicles, demo accounts. Safe to re-run; it never changes existing passwords.</td></tr>
+    <tr><td><code>demand:backfill</code></td><td>Generates six weeks of trip history up to today, which the demand model trains on.</td></tr>
+    <tr><td><code>rollup</code></td><td>Builds the daily summaries the Admin analytics dashboard reads.</td></tr>
+  </tbody>
+</table>
+
+<h2>7. Set up the Python ML service (once)</h2>
+<p>Open <b>Anaconda Prompt</b> (Windows) or a terminal (Linux/macOS):</p>
+<pre>cd micromobility_project\apps\ml
+conda create -n micromobility python=3.12 -y
+conda activate micromobility
+python --version             <span class="c"># must say 3.12.x before you continue</span>
+pip install -r requirements.txt</pre>
+<div class="note"><b>Python 3.12 exactly.</b> With a newer Python, pip tries to compile LightGBM and NumPy
+from source, which fails on Windows. If <code>pip install</code> fails anyway, install the heavy packages
+from conda-forge first, then repeat the pip line:<br>
+<code>conda install -c conda-forge numpy=2.1.3 pandas=2.2.3 scikit-learn=1.6.0 lightgbm=4.5.0 scipy -y</code></div>
+
+<h2>8. Start the project (every time)</h2>
+<p>MySQL starts with Windows by itself. Open <b>three</b> terminals and leave each one running.</p>
+
+<h3>Terminal 1 — ML service <span class="os">Anaconda Prompt</span></h3>
+<pre>cd micromobility_project\apps\ml
+conda activate micromobility
+uvicorn app.main:app --reload --port 8000</pre>
+<p>Run it from inside <code>apps\ml</code>, or you get <code>No module named 'app'</code>. On Linux/macOS
+<code>npm run dev:ml</code> from the root does all three lines.</p>
+
+<h3>Terminal 2 — API</h3>
+<pre>cd micromobility_project
+npm run dev:api</pre>
+<p>Ready when it prints <code>"API listening","port":4000</code>.</p>
+
+<h3>Terminal 3 — web app</h3>
+<pre>cd micromobility_project
+npm run dev:web</pre>
+<p>Then open <b>http://localhost:5173</b>.</p>
+
+<table>
+  <thead><tr><th style="width:42%">Check</th><th>Expected</th></tr></thead>
+  <tbody>
+    <tr><td>http://localhost:4000/healthz</td><td>API: a response containing <code>"status":"ok"</code></td></tr>
+    <tr><td>http://localhost:4000/readyz</td><td>API plus its database and ML service: each listed as up or down</td></tr>
+    <tr><td>http://localhost:8000/healthz</td><td>ML service: a response containing <code>"status":"ok"</code></td></tr>
+    <tr><td>http://localhost:8000/</td><td><code>404 Not Found</code>: normal, the ML service has no home page</td></tr>
+  </tbody>
+</table>
+
+<h2>9. Sign in and first steps</h2>
+<h3>Demo accounts (Option A, imported dump)</h3>
+<table>
+  <thead><tr><th>Role</th><th>Email</th><th>Password</th><th>Lands on</th></tr></thead>
+  <tbody>
+    <tr><td><b>admin</b></td><td><code>admin@belagavi.local</code></td><td><code>eQwwwt689EpL</code></td><td>Admin dashboard</td></tr>
+    <tr><td>operator</td><td><code>operator@belagavi.local</code></td><td><code>k1ENW4CMkiTw</code></td><td>Fleet</td></tr>
+    <tr><td>planner</td><td><code>planner@belagavi.local</code></td><td><code>NhmHQJFEvGd0</code></td><td>Sim</td></tr>
+    <tr><td>analyst</td><td><code>analyst@belagavi.local</code></td><td><code>1MsgfscGgAXp</code></td><td>Data</td></tr>
+    <tr><td>commuter</td><td><code>commuter@belagavi.local</code></td><td><code>_jAA5bSnau6Y</code></td><td>Ride</td></tr>
+  </tbody>
+</table>
+<p class="meta">With Option B, use the passwords <code>db:seed</code> printed instead. Anyone who signs up
+gets the commuter role; the admin can change roles under <b>Admin → Users</b>.</p>
+
+<h3>Once, after setup</h3>
+<ol>
+  <li><b>Admin analytics empty</b> ("No rollups yet")? Sign in as admin and press <b>Build now</b>.</li>
+  <li><b>Data → forecast empty</b>? Sign in as admin or analyst, open <b>Data</b>, press <b>Retrain model</b>.
+  The model is kept in the ML service's memory, so <b>retrain after every ML restart</b>.</li>
+</ol>
+
+<h3>Showing live updates</h3>
+<p>Sign in as <b>admin</b> in a normal window and as <b>commuter</b> in an <b>Incognito/InPrivate</b> window
+(two tabs of one window share one login). Open Fleet as admin; rent a vehicle on Ride as commuter;
+the Fleet counts and rider column change within a second.</p>
+
+<h3>Free map or Google</h3>
+<p>Every map has a <b>Free map | Google</b> switch at the top right. Google shows Google's own map of the
+same spot for checking positions; routes and stations are drawn only on the free map. No Google key
+or card is needed.</p>
+
+<h2>10. After pulling new code</h2>
+<pre>git pull
+npm install
+npm run build -w @mm/shared-types
+npm run db:migrate
+npm run db:seed</pre>
+<p>Then restart the API and web terminals (and retrain the model if you restarted the ML service).</p>
+
+<h2>11. When something goes wrong</h2>
+<table>
+  <thead><tr><th style="width:38%">You see</th><th>Cause and fix</th></tr></thead>
+  <tbody>
+    <tr><td><code>Table 'micromobility.roles' doesn't exist</code> when seeding</td><td>Tables were never created. Run <code>npm run db:migrate</code>, then seed.</td></tr>
+    <tr><td>Migration fails on <code>SRID</code>, or the dump will not import</td><td>You are connected to XAMPP's MariaDB. Use MySQL 8.4 and its port (sections 2 and 4).</td></tr>
+    <tr><td><code>ECONNREFUSED … :3306</code> in the API terminal</td><td><code>DB_PORT</code> in <code>.env</code> is not MySQL's port. Check with <code>netstat</code>.</td></tr>
+    <tr><td><code>Access denied for user 'mm_app'</code></td><td><code>DB_USER</code>/<code>DB_PASSWORD</code> do not match the <code>CREATE USER</code> you ran.</td></tr>
+    <tr><td><code>Missing required env var: JWT_ACCESS_SECRET</code></td><td>Fill in both JWT secrets in <code>.env</code> (section 5).</td></tr>
+    <tr><td>Sign-in says "Something went wrong"; web terminal shows <code>http proxy error … ECONNRESET</code></td><td>The API is not running or is restarting. Look at the API terminal; fix its error and press Sign in again.</td></tr>
+    <tr><td>API will not start: cannot find <code>@mm/shared-types</code> or <code>ACCESS</code></td><td>Run <code>npm run build -w @mm/shared-types</code>.</td></tr>
+    <tr><td>Place search returns 500; log says <code>Illegal mix of collations</code></td><td>Old code. Pull the latest <code>main</code> (fixed there).</td></tr>
+    <tr><td>Data screen: <code>No demand model has been trained yet</code></td><td>Press <b>Retrain model</b>. If training never starts, run <code>npm run demand:backfill</code> first: training needs trips from the last six weeks.</td></tr>
+    <tr><td>Plan screen: <code>NO_ROUTE_FOUND</code> / <code>SERVICE_UNAVAILABLE</code></td><td>The ML service is not running (Terminal 1), or the point is more than 750 m from any road.</td></tr>
+    <tr><td><code>No module named 'app'</code> starting the ML service</td><td>Start uvicorn from inside <code>apps\ml</code>.</td></tr>
+    <tr><td>pip fails compiling LightGBM / NumPy</td><td>The conda environment is not Python 3.12. Recreate it (section 7).</td></tr>
+    <tr><td><code>Port 5173 is in use</code></td><td>Another project is running there. Stop it, or run <code>npx vite --port 5174</code> in <code>apps\web</code>.</td></tr>
+    <tr><td>Admin: "No rollups yet"</td><td>Press <b>Build now</b>, or run <code>npm run rollup</code>.</td></tr>
+    <tr><td>Pins in the wrong place on the map</td><td>Old seed data. Pull <code>main</code> and run <code>npm run db:seed</code>; it moves every station to its real position.</td></tr>
+    <tr><td>Too many requests (429)</td><td>The API allows 100 requests a minute per user. Wait a minute.</td></tr>
+  </tbody>
+</table>
+
+<h2>12. Quick reference</h2>
+<table>
+  <tbody>
+    <tr><td style="width:42%">Start ML service</td><td><code>cd apps\ml</code> → <code>conda activate micromobility</code> → <code>uvicorn app.main:app --reload --port 8000</code></td></tr>
+    <tr><td>Start API / web</td><td><code>npm run dev:api</code> · <code>npm run dev:web</code></td></tr>
+    <tr><td>Open the app</td><td>http://localhost:5173</td></tr>
+    <tr><td>Update the database</td><td><code>npm run db:migrate</code> · <code>npm run db:seed</code></td></tr>
+    <tr><td>Fresh history and analytics</td><td><code>npm run demand:backfill</code> · <code>npm run rollup</code></td></tr>
+    <tr><td>Run the tests (Linux/macOS, with MySQL running)</td><td><code>set -a; . ./.env; set +a; NODE_ENV=test npm test</code> · in <code>apps/ml</code>: <code>pytest</code></td></tr>
+  </tbody>
+</table>
+
+<p class="foot">AI Urban Micro Mobility Simulator · Setup guide · Source: <code>docs/setup-guide.html</code>,
+rebuilt with <code>npm run guide:pdf -- setup</code></p>
+</main>
+</body>
+</html>

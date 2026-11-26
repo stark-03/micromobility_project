@@ -256,7 +256,12 @@ export function RideMap({
   const focusLabel = vehicleAt ? 'your vehicle' : selected ? selected.name : 'your location';
 
   return (
-    <MapSourceFrame map={map} focus={focus} focusLabel={focusLabel}>
+    <MapSourceFrame
+      map={map}
+      focus={focus}
+      focusLabel={focusLabel}
+      trip={!vehicleAt && origin && destination ? { from: origin, to: destination } : null}
+    >
       <div ref={container} className="absolute inset-0" data-testid="ride-map" />
       {tilesFailed && (
         <Box className="pointer-events-none absolute bottom-8 left-1/2 z-[500] -translate-x-1/2 rounded-md border border-ink-700 bg-ink-900 px-3 py-1.5">
